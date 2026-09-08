@@ -1,5 +1,5 @@
 """
-CBAS v2 — schemas.py
+CognitiveSense AI v4 — schemas.py
 All data models. No external dependencies.
 """
 from __future__ import annotations

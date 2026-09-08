@@ -1,11 +1,11 @@
 @echo off
-title CognitiveLoad AI — Live Multimodal Research Console
+title CognitiveSense AI — Live Multimodal Research Console
 
 cd /d "%~dp0.."
 
 echo.
 echo ============================================================
-echo   CognitiveLoad AI — Live Multimodal Research Console
+echo   CognitiveSense AI — Live Multimodal Research Console
 echo ============================================================
 echo.
 

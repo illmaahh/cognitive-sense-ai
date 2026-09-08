@@ -1,5 +1,5 @@
 """
-CBAS v2 — server.py
+CognitiveSense AI v4 — server.py
 Self-contained API server. No folder structure needed.
 Run:  python server.py
       python server.py --port 8080
@@ -26,7 +26,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
-# ── Import CBAS modules ──────────────────────────────────────────────
+# ── Import CognitiveSense modules ───────────────────────────────────
 from schemas import PerceptionFrame
 from session_manager import SessionRegistry, run_pipeline, build_report
 from reasoning_engine import ReasoningEngine, BehavioralScorer, InsightGenerator
@@ -49,7 +49,7 @@ threading.Thread(target=_cleanup, daemon=True).start()
 # ════════════════════════════════════════════════════════════════
 
 def route_health() -> dict:
-    return {"status": "operational", "version": "3.0.0",
+    return {"status": "operational", "version": "4.0.0",
             "active_sessions": registry.active_count(),
             "timestamp": time.time()}
 
@@ -244,7 +244,7 @@ def _try_fastapi():
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
 
-        app = FastAPI(title="CBAS v3", version="3.0.0")
+        app = FastAPI(title="CognitiveSense AI v4", version="3.0.0")
         app.add_middleware(CORSMiddleware, allow_origins=["*"],
                            allow_methods=["*"], allow_headers=["*"])
 
@@ -293,7 +293,7 @@ app = _try_fastapi()
 # ════════════════════════════════════════════════════════════════
 
 def main():
-    ap = argparse.ArgumentParser(description="CBAS v2 API Server")
+    ap = argparse.ArgumentParser(description="CognitiveSense AI v4 API Server")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--host", type=str, default="0.0.0.0")
     args = ap.parse_args()
@@ -302,7 +302,7 @@ def main():
     try:
         import uvicorn
         if app:
-            print(f"\n  CBAS v2  —  FastAPI + Uvicorn")
+            print(f"\n  CognitiveSense AI v4  —  FastAPI + Uvicorn")
             print(f"  http://{args.host}:{args.port}\n")
             uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
             return
@@ -311,7 +311,7 @@ def main():
 
     # Stdlib fallback (zero external deps)
     srv = HTTPServer((args.host, args.port), Handler)
-    print(f"\n  CBAS v2  —  Native HTTP Server  (no extra packages needed)")
+    print(f"\n  CognitiveSense AI v4  —  Native HTTP Server  (no extra packages needed)")
     print(f"  Listening on  http://localhost:{args.port}")
     print(f"  Press Ctrl+C to stop.\n")
     try:

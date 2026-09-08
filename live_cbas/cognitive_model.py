@@ -1,5 +1,5 @@
 """
-CBAS v2 — cognitive_model.py
+CognitiveSense AI v4 — cognitive_model.py
 Layer 3: Infers latent cognitive states from temporal features.
 Imports only: schemas.py (same folder), math (stdlib).
 """

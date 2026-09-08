@@ -1,8 +1,8 @@
-# CognitiveLoad AI
+# CognitiveSense AI v4
 
 **Multimodal Behavioral Signals for Generalizable Cognitive Load Estimation**
 
-CognitiveLoad AI is a research-oriented, real-time browser system that combines **face, eye/gaze-proxy, hand, posture, audio-level, and task-performance signals** for cognitive-load research. It provides a live perception console, a controlled task/data-collection workflow, an interpretable baseline pipeline, and participant-independent evaluation utilities.
+CognitiveSense AI is a research-oriented, real-time browser system that combines **face, eye/gaze-proxy, hand, posture, audio-level, and task-performance signals** for cognitive-load research. It provides a live perception console, a controlled task/data-collection workflow, an interpretable baseline pipeline, and participant-independent evaluation utilities.
 
 > **Research status:** the live cognitive-load score in the demo is a heuristic proxy. It is not a clinically validated measurement and must not be presented as a diagnosis of stress, depression, fatigue disorders, or any mental-health condition.
 
@@ -53,6 +53,19 @@ streamlit run app/streamlit_app.py
 ```
 
 The Streamlit app is useful for controlled task collection and research-data export. The `live_cbas/` app is the polished live-demo layer.
+
+## Live demonstration
+
+Primary deployment: **https://cognitive-sense-ai.onrender.com**
+
+The public console is intended for demonstration and research prototyping. Camera and microphone processing occurs in the browser; backend inference and session analytics are served by FastAPI.
+
+
+## Live console features
+
+The v4 console adds a visual neural-HUD layer with face/eye, hand, and posture landmarks plus connection lines, a live sensor matrix, gesture labels, gaze-proxy tracking, audio-level monitoring, speech support where the browser provides it, backend health state, and session/report export.
+
+Gesture and expression labels are observable cues derived from landmark geometry. They are not claims about a person's true emotions or mental-health status.
 
 ## Deploy publicly
 

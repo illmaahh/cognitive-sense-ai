@@ -1,6 +1,6 @@
 # Live Multimodal Console
 
-This directory contains the real-time browser interface for CognitiveLoad AI.
+This directory contains the real-time browser interface for CognitiveSense AI.
 
 ## Run locally
 
@@ -34,7 +34,7 @@ START.bat
 
 The same FastAPI process serves `/` and `/index.html` as well as `/health`, `/analyze`, and session endpoints. This makes local and HTTPS-hosted deployment simpler than using a fixed `localhost` API URL.
 
-For split deployments, set the browser backend URL in local storage with the key `cbas_backend_url`.
+For split deployments, set the browser backend URL in local storage with the key `cognitivesense_backend_url`.
 
 ## Safety / scientific boundary
 

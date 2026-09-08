@@ -21,7 +21,7 @@ from src.features import (
 )
 
 st.set_page_config(
-    page_title="CognitiveLoad AI",
+    page_title="CognitiveSense AI",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -38,7 +38,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="main-title">🧠 CognitiveLoad AI</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">🧠 CognitiveSense AI</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="subtitle">Real-time multimodal behavioral-signal research platform</div>',
     unsafe_allow_html=True,

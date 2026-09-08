@@ -1,5 +1,5 @@
 """
-CBAS v2 — reasoning_engine.py
+CognitiveSense AI v4 — reasoning_engine.py
 Layer 4: Reasoning, Anomaly Detection, Prediction, Scoring, Insights.
 Imports only: schemas.py (same folder), numpy, collections, math.
 """

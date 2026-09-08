@@ -1,5 +1,5 @@
 """
-CBAS v2 — session_manager.py
+CognitiveSense AI v4 — session_manager.py
 Per-session context + pipeline runner + report generator.
 Imports: schemas.py, feature_engineering.py, cognitive_model.py,
          reasoning_engine.py  — all same folder.

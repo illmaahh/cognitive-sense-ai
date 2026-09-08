@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CognitiveLoad AI — Live Multimodal Research Console</title>
+<title>CognitiveSense AI — Multimodal Intelligence Research Console</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +18,7 @@
 
 <style>
 /* ═══════════════════════════════════════════════════
-   CBAS v2 — Design System
+   CognitiveSense AI — Design System
    Aesthetic: Scientific Terminal / Research Dashboard
    Dark base, amber-gold accent, clean monospace data
 ═══════════════════════════════════════════════════ */
@@ -792,6 +792,56 @@ body::after {
 }
 .anomaly-active { animation: anomaly-flash 0.6s ease-in-out 4; }
 
+
+/* ── COGNITIVE SENSE HUD v4 ── */
+.neural-brand {
+  position: absolute; top: 18px; left: 18px; z-index: 5; pointer-events: none;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px;
+  color: rgba(255,255,255,.9); text-transform: uppercase;
+}
+.neural-brand b { color: var(--gold); font-weight: 700; }
+.neural-brand span { color: var(--text-3); margin-left: 8px; }
+.sensor-hud {
+  position: absolute; top: 18px; right: 18px; z-index: 5; pointer-events: none;
+  display: grid; grid-template-columns: repeat(2,minmax(80px,1fr)); gap: 5px; width: 190px;
+}
+.sensor-chip {
+  background: rgba(6,6,8,.72); border: 1px solid rgba(255,255,255,.09); backdrop-filter: blur(8px);
+  border-radius: 5px; padding: 5px 7px; box-shadow: 0 0 18px rgba(0,0,0,.18);
+}
+.sensor-chip .sc-top { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.sensor-chip .sc-name { font: 8px var(--font-mono); letter-spacing: 1.2px; color: var(--text-3); }
+.sensor-chip .sc-dot { width:5px; height:5px; border-radius:50%; background:var(--text-3); }
+.sensor-chip.live .sc-dot { background:var(--green); box-shadow:0 0 7px rgba(46,204,143,.7); }
+.sensor-chip.warn .sc-dot { background:var(--gold); box-shadow:0 0 7px rgba(245,200,66,.5); }
+.sensor-chip .sc-val { margin-top:3px; font: 10px var(--font-mono); color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hud-crosshair {
+  position:absolute; left:50%; top:50%; width:34px; height:34px; transform:translate(-50%,-50%);
+  border:1px solid rgba(245,200,66,.25); border-radius:50%; opacity:.55; pointer-events:none;
+}
+.hud-crosshair::before,.hud-crosshair::after { content:''; position:absolute; background:rgba(245,200,66,.35); }
+.hud-crosshair::before { left:50%; top:-10px; width:1px; height:54px; }
+.hud-crosshair::after { top:50%; left:-10px; height:1px; width:54px; }
+.hud-readout {
+  position:absolute; left:18px; bottom:18px; z-index:5; pointer-events:none;
+  background:rgba(6,6,8,.68); border:1px solid rgba(255,255,255,.08); backdrop-filter:blur(8px);
+  border-radius:6px; padding:8px 10px; min-width:210px;
+}
+.hud-readout .hr-title { font:8px var(--font-mono); letter-spacing:1.6px; color:var(--text-3); }
+.hud-readout .hr-main { margin-top:4px; font:600 14px var(--font-ui); color:var(--text); }
+.hud-readout .hr-main em { color:var(--gold); font-style:normal; }
+.hud-readout .hr-sub { margin-top:3px; font:8px var(--font-mono); color:var(--text-2); }
+.fusion-strip {
+  display:grid; grid-template-columns: repeat(6,1fr); border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--bg1);
+}
+.fusion-cell { padding:7px 8px; min-width:0; border-right:1px solid var(--border); }
+.fusion-cell:last-child { border-right:0; }
+.fusion-label { font:8px var(--font-mono); letter-spacing:1.2px; color:var(--text-3); }
+.fusion-value { margin-top:3px; font:600 10px var(--font-mono); color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fusion-value.live { color:var(--green); }
+.fusion-value.warn { color:var(--gold); }
+@media (max-width: 1100px) { .fusion-strip { grid-template-columns: repeat(3,1fr); } }
+
 /* Responsive */
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; grid-template-rows: 52px 50vh 1fr; }
@@ -805,8 +855,8 @@ body::after {
 
 <!-- BOOT SCREEN -->
 <div id="boot-screen">
-  <div class="boot-logo">CBAS</div>
-  <div class="boot-sub">Cognitive Behavior Analysis System v2</div>
+  <div class="boot-logo">CognitiveSense</div>
+  <div class="boot-sub">MULTIMODAL INTELLIGENCE RESEARCH CONSOLE • v4.0</div>
   <div class="boot-progress"><div class="boot-progress-fill" id="bootBar"></div></div>
   <div class="boot-status" id="bootStatus">INITIALIZING...</div>
 </div>
@@ -853,9 +903,9 @@ body::after {
     <div class="brand">
       <div class="brand-mark">CB</div>
       <div>
-        <div class="brand-text"><strong>CBAS</strong> v2</div>
+        <div class="brand-text"><strong>CognitiveSense</strong> AI</div>
       </div>
-      <span class="brand-version">RESEARCH EDITION</span>
+      <span class="brand-version">LIVE RESEARCH v4.0</span>
     </div>
 
     <div class="topbar-center">
@@ -879,6 +929,7 @@ body::after {
       <button class="top-btn active" id="btnF" onclick="VISION.toggle('face')">FACE</button>
       <button class="top-btn active" id="btnP" onclick="VISION.toggle('pose')">POSE</button>
       <button class="top-btn" id="btnAudio" onclick="AUDIO.toggle()">AUDIO</button>
+      <button class="top-btn active" id="btnNetwork" onclick="VISION.toggle('network')">NEURAL LINES</button>
       <button class="top-btn" id="btnBackend" onclick="BACKEND.toggle()">BACKEND</button>
     </div>
   </header>
@@ -889,6 +940,16 @@ body::after {
     <div class="viewport" id="viewport">
       <video id="video" autoplay muted playsinline></video>
       <canvas id="overlay"></canvas>
+      <div class="neural-brand"><b>COGNITIVESENSE AI</b><span>LIVE MULTIMODAL ANALYSIS</span></div>
+      <div class="sensor-hud">
+        <div class="sensor-chip" id="chipFace"><div class="sc-top"><div class="sc-name">FACE</div><div class="sc-dot"></div></div><div class="sc-val" id="chipFaceVal">SEARCHING</div></div>
+        <div class="sensor-chip" id="chipEyes"><div class="sc-top"><div class="sc-name">EYES / GAZE</div><div class="sc-dot"></div></div><div class="sc-val" id="chipEyesVal">SEARCHING</div></div>
+        <div class="sensor-chip" id="chipHands"><div class="sc-top"><div class="sc-name">HANDS</div><div class="sc-dot"></div></div><div class="sc-val" id="chipHandsVal">SEARCHING</div></div>
+        <div class="sensor-chip" id="chipPose"><div class="sc-top"><div class="sc-name">POSE</div><div class="sc-dot"></div></div><div class="sc-val" id="chipPoseVal">SEARCHING</div></div>
+        <div class="sensor-chip" id="chipAudio"><div class="sc-top"><div class="sc-name">AUDIO</div><div class="sc-dot"></div></div><div class="sc-val" id="chipAudioVal">WAITING</div></div>
+        <div class="sensor-chip" id="chipState"><div class="sc-top"><div class="sc-name">STATE</div><div class="sc-dot"></div></div><div class="sc-val" id="chipStateVal">IDLE</div></div>
+      </div>
+      <div class="hud-crosshair"></div>
       <div class="hud">
         <div class="hud-corner tl"></div>
         <div class="hud-corner tr"></div>
@@ -899,9 +960,14 @@ body::after {
         <div class="hud-state idle" id="hudState">IDLE</div>
         <div class="hud-anomaly" id="hudAnomaly">ANOMALY</div>
       </div>
+      <div class="hud-readout">
+        <div class="hr-title">MULTIMODAL FUSION ENGINE</div>
+        <div class="hr-main" id="hudFusionMain">Awaiting <em>live signals</em></div>
+        <div class="hr-sub" id="hudFusionSub">camera • audio • backend synchronized</div>
+      </div>
       <div class="start-overlay" id="startOverlay">
         <div class="start-glyph">◎</div>
-        <div class="start-msg">VISION PROCESSING RUNS IN THIS BROWSER<br>MIC AUDIO POWERS SOUND / SPEECH FEATURES<br>EMOTION OUTPUT IS HEURISTIC — NOT DIAGNOSTIC</div>
+        <div class="start-msg">REAL-TIME VISION PROCESSING RUNS IN THIS BROWSER<br>MIC AUDIO POWERS SOUND / SPEECH FEATURES<br>EMOTION OUTPUT IS HEURISTIC — NOT DIAGNOSTIC</div>
         <button class="start-action" onclick="VISION.start()">INITIALIZE SYSTEM</button>
       </div>
     </div>
@@ -932,6 +998,15 @@ body::after {
         <div class="metric-label">SCORE</div>
         <div class="metric-val gold" id="mScore">—</div>
       </div>
+    </div>
+
+    <div class="fusion-strip" aria-label="Live sensor matrix">
+      <div class="fusion-cell"><div class="fusion-label">FACE</div><div class="fusion-value" id="fusionFace">OFF</div></div>
+      <div class="fusion-cell"><div class="fusion-label">GAZE</div><div class="fusion-value" id="fusionGaze">OFF</div></div>
+      <div class="fusion-cell"><div class="fusion-label">HANDS</div><div class="fusion-value" id="fusionHands">OFF</div></div>
+      <div class="fusion-cell"><div class="fusion-label">POSE</div><div class="fusion-value" id="fusionPose">OFF</div></div>
+      <div class="fusion-cell"><div class="fusion-label">AUDIO</div><div class="fusion-value" id="fusionAudio">OFF</div></div>
+      <div class="fusion-cell"><div class="fusion-label">BACKEND</div><div class="fusion-value" id="fusionBackend">OFF</div></div>
     </div>
 
     <!-- Layer tabs -->
@@ -1125,7 +1200,7 @@ body::after {
         <div class="live-card"><div class="live-label">Audio</div><div class="live-value" id="liveAudio">MIC OFF</div><div class="audio-meter"><div class="audio-meter-fill" id="audioMeter"></div></div></div>
         <div class="live-card"><div class="live-label">Speech</div><div class="live-value" id="liveSpeech">—</div></div>
       </div>
-      <div class="test-row"><button class="test-btn" onclick="AUDIO.testMic()">TEST MIC</button><button class="test-btn" onclick="VISION.testDetectors()">TEST CAMERA</button></div>
+      <div class="test-row"><button class="test-btn" onclick="AUDIO.testMic()">TEST MIC</button><button class="test-btn" onclick="VISION.testDetectors()">RUN SENSOR CHECK</button></div>
       <div class="signal-note">Expression output describes visible landmark cues only. It does not diagnose depression, mental illness, or determine a person's true emotional state.</div>
     </div>
 
@@ -1155,7 +1230,7 @@ body::after {
 <script>
 'use strict';
 // ════════════════════════════════════════════════════════════════
-// CognitiveLoad AI — Frontend Intelligence System
+// CognitiveSense AI — Frontend Intelligence System
 // Architecture: Perception → Feature Engine → Backend API → UI
 // ════════════════════════════════════════════════════════════════
 
@@ -1163,7 +1238,7 @@ body::after {
 // CONFIGURATION
 // ─────────────────────────────────────────────
 const CONFIG = {
-  BACKEND_URL: (localStorage.getItem('cbas_backend_url') || window.location.origin),
+  BACKEND_URL: (localStorage.getItem('cognitivesense_backend_url') || window.location.origin),
   API_SEND_INTERVAL_MS: 1500,     // send frame to backend every 1.5s
   INSIGHT_INTERVAL_MS: 18000,     // refresh AI insight every 18s
   EMA_ALPHA: 0.15,
@@ -1176,7 +1251,7 @@ const CONFIG = {
 // In production the API is same-origin, which avoids mixed-content/CORS surprises.
 function setBackendUrl(url) {
   const normalized = (url || '').trim().replace(/\/$/, '') || window.location.origin;
-  localStorage.setItem('cbas_backend_url', normalized);
+  localStorage.setItem('cognitivesense_backend_url', normalized);
   CONFIG.BACKEND_URL = normalized;
 }
 
@@ -1190,7 +1265,7 @@ const SESSION = {
   fps: 0, fpsFrames: 0, fpsLastTs: 0,
   running: false,
   backendActive: false,
-  layers: { hands: true, face: true, pose: true },
+  layers: { hands: true, face: true, pose: true, network: true },
 
   // Perception data (latest frame)
   perc: {
@@ -1217,6 +1292,7 @@ const SESSION = {
 
   // Previous frame for velocity
   prev: { handLM: null, poseLM: null, eyeCenter: null },
+  render: { hands: [], face: null, pose: null },
 
   // Smoothed values (EMA)
   smooth: {
@@ -1314,12 +1390,47 @@ function initMediaPipe() {
 }
 
 // ─────────────────────────────────────────────
+// HAND GESTURE ENGINE
+// Rule-based landmark geometry for interpretable live labels.
+// ─────────────────────────────────────────────
+function dist2(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function fingerState(lm){
+  if(!lm || lm.length<21) return [false,false,false,false,false];
+  const fingers=[false,false,false,false,false];
+  // For the four long fingers, compare fingertip y with PIP y in mirrored selfie space.
+  fingers[1] = lm[8].y < lm[6].y;
+  fingers[2] = lm[12].y < lm[10].y;
+  fingers[3] = lm[16].y < lm[14].y;
+  fingers[4] = lm[20].y < lm[18].y;
+  // Thumb: use distance from thumb tip to index MCP as a robust open/closed cue.
+  fingers[0] = dist2(lm[4], lm[5]) > dist2(lm[3], lm[5]) * 1.15;
+  return fingers;
+}
+
+function classifyGesture(lm, velocity=0){
+  if(!lm || lm.length<21) return 'UNKNOWN';
+  const f=fingerState(lm), count=f.filter(Boolean).length;
+  const pinch=dist2(lm[4],lm[8]) < 0.055;
+  if(pinch) return 'PINCH / OK';
+  if(count===0) return velocity>7 ? 'FAST FIST MOVEMENT' : 'FIST';
+  if(count===5) return velocity>6 ? 'OPEN PALM / WAVE' : 'OPEN PALM';
+  if(f[1]&&!f[2]&&!f[3]&&!f[4]) return 'POINTING';
+  if(!f[0]&&f[1]&&f[2]&&!f[3]&&!f[4]) return 'PEACE SIGN';
+  if(f[0]&&!f[1]&&!f[2]&&!f[3]&&!f[4]) return lm[4].y<lm[3].y ? 'THUMBS UP' : 'THUMBS DOWN';
+  if(count===3) return 'THREE FINGERS';
+  if(count===4) return 'FOUR FINGERS';
+  return `${count} FINGERS`; 
+}
+
+// ─────────────────────────────────────────────
 // HAND TRACKING
 // ─────────────────────────────────────────────
 function onHandResults(res) {
   if (!SESSION.layers.hands) return;
   const c = $ctx(); const W = $cnv().width; const H = $cnv().height;
   const hands = res.multiHandLandmarks || [];
+  SESSION.render.hands = hands;
   SESSION.perc.hands = hands.length > 0;
 
   if (hands.length) {
@@ -1343,6 +1454,7 @@ function onHandResults(res) {
     SESSION.perc.fingerCount = fingerState(lm).filter(Boolean).length;
     SESSION.perc.twoHandDistance = hands.length===2 ? dist2(hands[0][0],hands[1][0]) : 0;
   } else {
+    SESSION.render.hands = [];
     SESSION.perc.handVel=0; SESSION.perc.handActivity=0; SESSION.perc.gesture='NO HANDS';
     SESSION.perc.fingerCount=0; SESSION.perc.twoHandDistance=0; SESSION.prev.handLM=null;
   }
@@ -1381,6 +1493,7 @@ function onFaceResults(res) {
 
   if (SESSION.perc.face) {
     const lm = res.multiFaceLandmarks[0];
+    SESSION.render.face = lm;
     classifyExpression(lm);
 
     // Iris
@@ -1470,6 +1583,7 @@ function onFaceResults(res) {
     SESSION.perc.attentionRaw = clamp(facePts + eyePts + stabPts + headPts - movPen, 0, 100);
 
   } else {
+    SESSION.render.face = null;
     SESSION.perc.eyeOpen = 0;
     SESSION.perc.attentionRaw = 0;
     SESSION.perc.eyeStabRaw = 0;
@@ -1494,6 +1608,7 @@ function onPoseResults(res) {
 
   if (SESSION.perc.pose) {
     const lm = res.poseLandmarks;
+    SESSION.render.pose = lm;
     const conns = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24]];
 
     for (const [a,b] of conns) {
@@ -1538,9 +1653,62 @@ function onPoseResults(res) {
     SESSION.prev.poseLM = lm.map(p => ({x:p.x,y:p.y}));
     SESSION.perc.movementRaw = SESSION.perc.bodyMotion;
   } else {
+    SESSION.render.pose = null;
     SESSION.perc.bodyMotion = 0;
     SESSION.perc.movementRaw = 0;
   }
+}
+
+// ─────────────────────────────────────────────
+// ADVANCED NEURAL HUD / CONNECTION LINES
+// Draws interpretable visual links on top of detector landmarks.
+// ─────────────────────────────────────────────
+function drawNeuralHUD(){
+  if(!SESSION.layers.network) return;
+  const c=$ctx(), W=$cnv().width, H=$cnv().height;
+  const face=SESSION.render.face, pose=SESSION.render.pose, hands=SESSION.render.hands||[];
+  const pt=(p)=>({x:p.x*W,y:p.y*H});
+  c.save();
+  c.globalAlpha=0.85;
+
+  if(face&&face.length){
+    const key=[10,152,234,454,61,291].map(i=>face[i]).filter(Boolean).map(pt);
+    const minX=Math.min(...face.map(p=>p.x))*W, maxX=Math.max(...face.map(p=>p.x))*W;
+    const minY=Math.min(...face.map(p=>p.y))*H, maxY=Math.max(...face.map(p=>p.y))*H;
+    c.strokeStyle='rgba(245,200,66,.65)'; c.lineWidth=1.15; c.setLineDash([4,4]);
+    c.strokeRect(minX-5,minY-5,(maxX-minX)+10,(maxY-minY)+10); c.setLineDash([]);
+    key.forEach(p=>{ c.beginPath(); c.arc(p.x,p.y,2.3,0,Math.PI*2); c.fillStyle='rgba(245,200,66,.9)'; c.fill(); });
+  }
+
+  const nodes=[];
+  if(face&&face[1]) nodes.push({p:pt(face[1]),label:'FACE',color:'rgba(245,200,66,.85)'});
+  if(face&&face[468]&&face[473]){
+    const L=pt(face[468]),R=pt(face[473]);
+    nodes.push({p:{x:(L.x+R.x)/2,y:(L.y+R.y)/2},label:'GAZE',color:'rgba(61,214,245,.9)'});
+    const gx=clamp((SESSION.perc.gazeX+0.5),0,1)*W, gy=clamp((SESSION.perc.gazeY+0.5),0,1)*H;
+    c.beginPath(); c.moveTo((L.x+R.x)/2,(L.y+R.y)/2); c.lineTo(gx,gy);
+    c.strokeStyle='rgba(61,214,245,.5)'; c.lineWidth=1; c.stroke();
+  }
+  if(pose&&pose[11]&&pose[12]){
+    nodes.push({p:{x:(pose[11].x+pose[12].x)*W/2,y:(pose[11].y+pose[12].y)*H/2},label:'POSE',color:'rgba(46,204,143,.9)'});
+  }
+  hands.slice(0,2).forEach((h,i)=>{ if(h&&h[0]) nodes.push({p:pt(h[0]),label:'HAND'+(i+1),color:i===0?'rgba(139,92,246,.9)':'rgba(61,214,245,.9)'}); });
+
+  // Connect nodes as a lightweight multimodal network.
+  if(nodes.length>1){
+    c.lineWidth=0.8;
+    for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+      const d=Math.hypot(nodes[i].p.x-nodes[j].p.x,nodes[i].p.y-nodes[j].p.y);
+      if(d>Math.min(W,H)*0.48) continue;
+      c.beginPath(); c.moveTo(nodes[i].p.x,nodes[i].p.y); c.lineTo(nodes[j].p.x,nodes[j].p.y);
+      c.strokeStyle='rgba(245,200,66,.18)'; c.stroke();
+    }
+  }
+  nodes.forEach(n=>{
+    c.beginPath(); c.arc(n.p.x,n.p.y,4,0,Math.PI*2); c.fillStyle=n.color; c.fill();
+    c.font='8px JetBrains Mono'; c.fillStyle='rgba(255,255,255,.58)'; c.fillText(n.label,n.p.x+7,n.p.y-5);
+  });
+  c.restore();
 }
 
 // ─────────────────────────────────────────────
@@ -1633,7 +1801,7 @@ const VISION = {
       setTimeout(() => INSIGHT.refresh(), 8000);
       setInterval(() => INSIGHT.refresh(), CONFIG.INSIGHT_INTERVAL_MS);
       setInterval(BACKEND.sendFrame, CONFIG.API_SEND_INTERVAL_MS);
-      EVENTS.add('🎯', 'CBAS v2 analysis pipeline started');
+      EVENTS.add('🎯', 'CognitiveSense AI multimodal pipeline started');
       UI.setStatus('cam', 'analyzing', 'ANALYZING');
     } catch(e) {
       alert('Camera permission required. Please allow access and refresh.');
@@ -1643,8 +1811,8 @@ const VISION = {
 
   toggle(layer) {
     SESSION.layers[layer] = !SESSION.layers[layer];
-    const ids = { hands:'btnH', face:'btnF', pose:'btnP' };
-    document.getElementById(ids[layer]).classList.toggle('active', SESSION.layers[layer]);
+    const ids = { hands:'btnH', face:'btnF', pose:'btnP', network:'btnNetwork' };
+    if(ids[layer]) document.getElementById(ids[layer]).classList.toggle('active', SESSION.layers[layer]);
   },
 
   testDetectors() {
@@ -1691,7 +1859,8 @@ const VISION = {
         if (SESSION.layers.hands) await MP.hands.send({ image: v });
         if (SESSION.layers.face)  await MP.face.send({ image: v });
         if (SESSION.layers.pose)  await MP.pose.send({ image: v });
-      } catch(e) {}
+        drawNeuralHUD();
+      } catch(e) { drawNeuralHUD(); }
     }
 
     computeLocalMetrics();
@@ -2017,6 +2186,13 @@ const RTAB = {
 };
 
 // ─────────────────────────────────────────────
+
+function stateLabelsSafe(s){
+  const m={FOCUSED:'FOCUS',ENGAGED:'ENGAGEMENT',STRESSED:'HIGH STRAIN',FATIGUED:'FATIGUE',OVERLOADED:'HIGH LOAD',DISTRACTED:'ATTENTION SHIFT',IDLE:'AWAITING'};
+  return m[s]||s;
+}
+function scoreSafe(){ return SESSION.backend.score?.overall ?? SESSION.smooth.attention ?? 0; }
+
 // UI UPDATES
 // ─────────────────────────────────────────────
 const UI = {
@@ -2036,6 +2212,33 @@ const UI = {
     if (le) le.textContent = SESSION.perc.face ? `OPEN ${Math.round(SESSION.perc.eyeOpen*100)}% · GAZE ${SESSION.perc.gazeX.toFixed(1)},${SESSION.perc.gazeY.toFixed(1)}` : 'NO EYES';
     if (lh) lh.textContent = SESSION.perc.hands ? `${SESSION.perc.gesture} · ${SESSION.perc.fingerCount} fingers` : 'NO HANDS';
     if (lp) lp.textContent = SESSION.perc.pose ? `MOTION ${Math.round(SESSION.perc.bodyMotion)}%` : 'NO POSE';
+
+    const sensor = (id, live, value, warn=false) => {
+      const el=document.getElementById(id); if(!el) return;
+      el.classList.toggle('live', !!live); el.classList.toggle('warn', !!warn && !live);
+    };
+    document.getElementById('chipFaceVal').textContent = SESSION.perc.face ? 'TRACKING' : 'SEARCHING';
+    document.getElementById('chipEyesVal').textContent = SESSION.perc.face ? `${Math.round(SESSION.perc.eyeOpen*100)}% OPEN` : 'SEARCHING';
+    document.getElementById('chipHandsVal').textContent = SESSION.perc.hands ? SESSION.perc.gesture : 'SEARCHING';
+    document.getElementById('chipPoseVal').textContent = SESSION.perc.pose ? `${Math.round(SESSION.perc.bodyMotion)}% MOTION` : 'SEARCHING';
+    document.getElementById('chipAudioVal').textContent = AUDIO.enabled ? `${Math.round(SESSION.perc.audioLevel)}% LEVEL` : 'WAITING';
+    const stateNow=(SESSION.backend.cogState?.dominant_state || INSIGHT._localState() || 'idle').toUpperCase();
+    document.getElementById('chipStateVal').textContent=stateNow;
+    sensor('chipFace',SESSION.perc.face, '', true); sensor('chipEyes',SESSION.perc.face,'',true); sensor('chipHands',SESSION.perc.hands,'',true); sensor('chipPose',SESSION.perc.pose,'',true); sensor('chipAudio',AUDIO.enabled,'',true); sensor('chipState',stateNow!=='IDLE','',true);
+    document.getElementById('fusionFace').textContent=SESSION.perc.face?'TRACKING':'OFF';
+    document.getElementById('fusionGaze').textContent=SESSION.perc.face?`${SESSION.perc.gazeX.toFixed(2)}, ${SESSION.perc.gazeY.toFixed(2)}`:'OFF';
+    document.getElementById('fusionHands').textContent=SESSION.perc.hands?SESSION.perc.gesture:'OFF';
+    document.getElementById('fusionPose').textContent=SESSION.perc.pose?`${Math.round(SESSION.perc.bodyMotion)}%`:'OFF';
+    document.getElementById('fusionAudio').textContent=AUDIO.enabled?`${Math.round(SESSION.perc.audioLevel)}%`:'OFF';
+    document.getElementById('fusionBackend').textContent=SESSION.backendActive?'LIVE':'LOCAL';
+    ['fusionFace','fusionGaze','fusionHands','fusionPose','fusionAudio','fusionBackend'].forEach(id=>{
+      const e=document.getElementById(id); if(e) e.classList.toggle('live', e.textContent!=='OFF' && e.textContent!=='LOCAL');
+    });
+    const main=document.getElementById('hudFusionMain');
+    const sub=document.getElementById('hudFusionSub');
+    if(main){ main.innerHTML = `${stateLabelsSafe(stateNow)} <em>${Math.round(scoreSafe())}%</em>`; }
+    if(sub){ sub.textContent = `${SESSION.perc.face?'face':'no-face'} • ${SESSION.perc.hands?'hands':'no-hands'} • ${SESSION.perc.pose?'pose':'no-pose'} • ${AUDIO.enabled?'mic':'no-mic'} • ${SESSION.backendActive?'backend live':'local mode'}`; }
+
     const a = Math.round(SESSION.smooth.attention);
     const m = Math.round(SESSION.smooth.movement);
     const e = Math.round(SESSION.smooth.eyeStab);
@@ -2319,8 +2522,8 @@ const DATA = {
   exportJSON() {
     const elapsed = SESSION.started ? Math.floor((Date.now()-SESSION.started)/1000) : 0;
     const report = {
-      system: 'CBAS v2 — Cognitive Behavior Analysis System',
-      version: '3.0.0',
+      system: 'CognitiveSense AI — Multimodal Intelligence Research Platform',
+      version: '4.0.0',
       generated: new Date().toISOString(),
       session: {
         id: SESSION.id,
@@ -2358,7 +2561,7 @@ const DATA = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `CBAS_v2_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+    a.download = `CognitiveSenseAI_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
     a.click();
     URL.revokeObjectURL(url);
     UI.closeReport();

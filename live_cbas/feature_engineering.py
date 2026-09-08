@@ -1,5 +1,5 @@
 """
-CBAS v2 — feature_engineering.py
+CognitiveSense AI v4 — feature_engineering.py
 Layer 2: Sliding-window temporal feature extraction.
 Imports only: schemas.py (same folder), numpy (stdlib available).
 """
