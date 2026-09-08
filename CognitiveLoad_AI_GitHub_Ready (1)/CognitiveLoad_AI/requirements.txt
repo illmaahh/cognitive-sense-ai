@@ -1,0 +1,13 @@
+streamlit>=1.45,<2
+streamlit-webrtc>=0.49,<1
+streamlit-autorefresh>=1,<2
+opencv-python-headless>=4.10,<5
+mediapipe>=0.10,<1
+numpy>=1.26,<3
+pandas>=2.2,<3
+scikit-learn>=1.5,<2
+joblib>=1.4,<2
+av>=12,<16
+fastapi>=0.115,<1
+uvicorn[standard]>=0.34,<1
+pytest>=8,<9

@@ -1,0 +1,2420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CognitiveLoad AI — Live Multimodal Research Console</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════
+   CBAS v2 — Design System
+   Aesthetic: Scientific Terminal / Research Dashboard
+   Dark base, amber-gold accent, clean monospace data
+═══════════════════════════════════════════════════ */
+:root {
+  --bg0: #060608;
+  --bg1: #0b0c10;
+  --bg2: #0f1117;
+  --bg3: #141720;
+  --bg4: #1a1e2a;
+  --border: #1f2436;
+  --border2: #252d42;
+
+  --gold: #f5c842;
+  --gold2: #e8a820;
+  --gold-dim: rgba(245,200,66,0.15);
+  --gold-glow: 0 0 20px rgba(245,200,66,0.2);
+
+  --cyan: #3dd6f5;
+  --cyan-dim: rgba(61,214,245,0.12);
+  --green: #2ecc8f;
+  --green-dim: rgba(46,204,143,0.12);
+  --red: #f0545a;
+  --red-dim: rgba(240,84,90,0.12);
+  --violet: #8b5cf6;
+  --violet-dim: rgba(139,92,246,0.12);
+  --orange: #f97316;
+
+  --text: #d4daea;
+  --text-2: #8b95b0;
+  --text-3: #4a5270;
+
+  --font-display: 'Instrument Serif', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-ui: 'Outfit', sans-serif;
+
+  --radius: 6px;
+  --radius-lg: 10px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg0); color: var(--text); font-family: var(--font-ui); overflow: hidden; }
+
+/* Grain texture */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; opacity: 0.6;
+}
+
+/* ── LOADING ── */
+#boot-screen {
+  position: fixed; inset: 0; background: var(--bg0);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 32px; z-index: 10000; transition: opacity 0.6s ease;
+}
+#boot-screen.fade-out { opacity: 0; pointer-events: none; }
+.boot-logo {
+  font-family: var(--font-display);
+  font-size: 52px;
+  color: var(--gold);
+  letter-spacing: -2px;
+  line-height: 1;
+  filter: drop-shadow(0 0 30px rgba(245,200,66,0.4));
+}
+.boot-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  margin-top: -20px;
+}
+.boot-progress {
+  width: 280px; height: 1px;
+  background: var(--border2);
+  position: relative; overflow: hidden;
+}
+.boot-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold2), var(--gold));
+  width: 0;
+  transition: width 0.4s ease;
+  box-shadow: var(--gold-glow);
+}
+.boot-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ── LAYOUT ── */
+.shell {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  grid-template-columns: 1fr 360px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg1);
+  position: relative;
+}
+.topbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.2;
+}
+.brand {
+  display: flex; align-items: center; gap: 14px;
+}
+.brand-mark {
+  width: 28px; height: 28px;
+  border: 1.5px solid var(--gold);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  position: relative;
+  overflow: hidden;
+}
+.brand-mark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(var(--gold-dim) 0deg, transparent 120deg, var(--gold-dim) 240deg, transparent 360deg);
+  animation: brand-spin 6s linear infinite;
+}
+@keyframes brand-spin { to { transform: rotate(360deg); } }
+.brand-text { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--text); }
+.brand-text strong { color: var(--gold); }
+.brand-version {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+  background: var(--bg3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.topbar-center {
+  display: flex; align-items: center; gap: 20px;
+}
+.sys-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.sys-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.sys-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-online 2s infinite; }
+.sys-dot.offline { background: var(--red); }
+.sys-dot.analyzing { background: var(--gold); box-shadow: 0 0 6px var(--gold); animation: pulse-online 1.2s infinite; }
+@keyframes pulse-online {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.topbar-right {
+  display: flex; align-items: center; gap: 12px;
+}
+.top-clock {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+}
+.top-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--text-2);
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.top-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+.top-btn.active { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+
+/* ── LEFT PANEL ── */
+.left-panel {
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+
+/* Camera */
+.viewport {
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+#video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1); }
+#overlay { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); }
+
+/* HUD */
+.hud { position: absolute; inset: 0; pointer-events: none; }
+.hud-corner { position: absolute; width: 24px; height: 24px; border-color: var(--gold); border-style: solid; opacity: 0.5; }
+.hud-corner.tl { top: 14px; left: 14px; border-width: 1.5px 0 0 1.5px; }
+.hud-corner.tr { top: 14px; right: 14px; border-width: 1.5px 1.5px 0 0; }
+.hud-corner.bl { bottom: 14px; left: 14px; border-width: 0 0 1.5px 1.5px; }
+.hud-corner.br { bottom: 14px; right: 14px; border-width: 0 1.5px 1.5px 0; }
+
+.hud-fps {
+  position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px;
+  color: var(--gold); background: rgba(0,0,0,0.7);
+  padding: 2px 8px; border-radius: 2px;
+  border: 1px solid rgba(245,200,66,0.2);
+}
+
+.hud-gesture {
+  position: absolute; top: 16px; right: 16px;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px;
+  color: var(--violet); background: rgba(0,0,0,0.75);
+  padding: 3px 8px; border-radius: 3px;
+  border: 1px solid rgba(139,92,246,0.3);
+  text-transform: uppercase;
+  max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.hud-state {
+  position: absolute; bottom: 16px; left: 16px;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px;
+  padding: 4px 10px; border-radius: 3px;
+  text-transform: uppercase; font-weight: 500;
+  transition: all 0.3s;
+}
+.hud-state.focused  { color: var(--green); background: var(--green-dim); border: 1px solid rgba(46,204,143,0.3); }
+.hud-state.distracted { color: var(--gold); background: var(--gold-dim); border: 1px solid rgba(245,200,66,0.3); }
+.hud-state.stressed { color: var(--red); background: var(--red-dim); border: 1px solid rgba(240,84,90,0.3); }
+.hud-state.fatigued { color: var(--cyan); background: var(--cyan-dim); border: 1px solid rgba(61,214,245,0.3); }
+.hud-state.overloaded { color: var(--violet); background: var(--violet-dim); border: 1px solid rgba(139,92,246,0.3); }
+.hud-state.idle     { color: var(--text-3); background: var(--bg3); border: 1px solid var(--border); }
+.hud-state.engaged  { color: var(--gold); background: var(--gold-dim); border: 1px solid rgba(245,200,66,0.3); }
+
+.hud-anomaly {
+  position: absolute; bottom: 16px; right: 16px;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px;
+  color: var(--red); background: rgba(240,84,90,0.12);
+  padding: 3px 8px; border-radius: 3px;
+  border: 1px solid rgba(240,84,90,0.4);
+  text-transform: uppercase;
+  display: none;
+}
+.hud-anomaly.visible { display: block; animation: anomaly-blink 0.8s ease-in-out 5; }
+@keyframes anomaly-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Start overlay */
+.start-overlay {
+  position: absolute; inset: 0;
+  background: rgba(6,6,8,0.92);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px; transition: opacity 0.5s;
+  backdrop-filter: blur(4px);
+}
+.start-overlay.hidden { opacity: 0; pointer-events: none; }
+.start-glyph {
+  width: 72px; height: 72px;
+  border: 1.5px solid var(--gold);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  color: var(--gold);
+  box-shadow: var(--gold-glow), inset var(--gold-glow);
+  animation: glyph-float 3.5s ease-in-out infinite;
+}
+@keyframes glyph-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.start-msg {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--text-3); text-align: center;
+  line-height: 2;
+}
+.start-action {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  padding: 10px 32px;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: var(--gold-glow);
+}
+.start-action:hover { background: var(--gold2); transform: translateY(-2px); box-shadow: 0 0 30px rgba(245,200,66,0.4); }
+
+/* ── METRICS BAR ── */
+.metrics-bar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border-top: 1px solid var(--border);
+  background: var(--bg1);
+}
+.metric-cell {
+  padding: 10px 12px;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.metric-cell:last-child { border-right: none; }
+.metric-label {
+  font-family: var(--font-mono);
+  font-size: 8px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text-3);
+}
+.metric-val {
+  font-family: var(--font-mono);
+  font-size: 17px; font-weight: 700;
+  line-height: 1;
+  color: var(--cyan);
+  transition: color var(--transition);
+}
+.metric-val.gold { color: var(--gold); }
+.metric-val.green { color: var(--green); }
+.metric-val.red { color: var(--red); }
+.metric-val.violet { color: var(--violet); }
+.metric-val.orange { color: var(--orange); }
+
+/* ── LAYER TABS ── */
+.layer-tabs {
+  display: flex; align-items: center;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  padding: 0 12px;
+}
+.layer-tab {
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-3);
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.layer-tab:hover { color: var(--text-2); }
+.layer-tab.active { color: var(--gold); border-color: var(--gold); }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  background: var(--bg1);
+}
+
+/* ── SCORE SECTION ── */
+.score-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.score-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 14px;
+}
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text-3);
+}
+.session-timer {
+  font-family: var(--font-mono);
+  font-size: 11px; color: var(--text-3); letter-spacing: 1px;
+}
+
+/* Composite ring */
+.score-ring-row {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 14px;
+}
+.ring-wrap { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
+.ring-svg { width: 72px; height: 72px; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--bg4); stroke-width: 7; }
+.ring-fill {
+  fill: none; stroke: var(--gold); stroke-width: 7;
+  stroke-linecap: round;
+  stroke-dasharray: 188;
+  stroke-dashoffset: 188;
+  transition: stroke-dashoffset 0.6s ease, stroke 0.3s ease;
+  filter: drop-shadow(0 0 4px var(--gold));
+}
+.ring-num {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: 16px; font-weight: 700;
+  color: var(--gold); line-height: 1;
+}
+.ring-grade {
+  position: absolute; bottom: 2px; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 9px; color: var(--text-3); letter-spacing: 1px;
+}
+
+.score-bars { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.sbar-row {
+  display: grid; grid-template-columns: 60px 1fr 30px;
+  align-items: center; gap: 8px;
+}
+.sbar-lbl { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); }
+.sbar-track { height: 3px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+.sbar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+.sbar-pct { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); text-align: right; }
+
+/* State pill */
+.state-pill {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 8px; border-radius: var(--radius);
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  letter-spacing: 1px; text-transform: uppercase;
+  transition: all 0.4s ease; border: 1px solid;
+}
+.state-pill.focused  { color: var(--green); background: var(--green-dim); border-color: rgba(46,204,143,0.25); }
+.state-pill.distracted { color: var(--gold); background: var(--gold-dim); border-color: rgba(245,200,66,0.25); }
+.state-pill.stressed { color: var(--red); background: var(--red-dim); border-color: rgba(240,84,90,0.25); }
+.state-pill.fatigued { color: var(--cyan); background: var(--cyan-dim); border-color: rgba(61,214,245,0.25); }
+.state-pill.overloaded { color: var(--violet); background: var(--violet-dim); border-color: rgba(139,92,246,0.25); }
+.state-pill.idle     { color: var(--text-3); background: var(--bg3); border-color: var(--border); }
+.state-pill.engaged  { color: var(--gold); background: var(--gold-dim); border-color: rgba(245,200,66,0.25); }
+
+/* ── TAB CONTENT ── */
+.tab-content { flex: 1; overflow: hidden; }
+.tab-pane { display: none; height: 100%; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.tab-pane.active { display: block; }
+.tab-pane::-webkit-scrollbar { width: 3px; }
+.tab-pane::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* Charts pane */
+.chart-block {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.chart-block-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+.chart-block-title {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--text-3);
+}
+.chart-block-val { font-family: var(--font-mono); font-size: 12px; color: var(--gold); font-weight: 500; }
+.chart-canvas { max-height: 65px; }
+
+/* Cognitive state pane */
+.cog-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; padding: 14px 16px;
+}
+.cog-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  position: relative; overflow: hidden;
+}
+.cog-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+}
+.cog-card.focus::before { background: var(--green); }
+.cog-card.load::before  { background: var(--violet); }
+.cog-card.stress::before { background: var(--red); }
+.cog-card.fatigue::before { background: var(--cyan); }
+
+.cog-card-label {
+  font-family: var(--font-mono); font-size: 8px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 6px;
+}
+.cog-card-val {
+  font-family: var(--font-mono); font-size: 26px;
+  font-weight: 700; line-height: 1;
+  margin-bottom: 6px;
+}
+.cog-card.focus .cog-card-val { color: var(--green); }
+.cog-card.load  .cog-card-val { color: var(--violet); }
+.cog-card.stress .cog-card-val { color: var(--red); }
+.cog-card.fatigue .cog-card-val { color: var(--cyan); }
+
+.cog-mini-bar {
+  height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.cog-mini-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+.cog-card.focus .cog-mini-fill { background: var(--green); }
+.cog-card.load  .cog-mini-fill { background: var(--violet); }
+.cog-card.stress .cog-mini-fill { background: var(--red); }
+.cog-card.fatigue .cog-mini-fill { background: var(--cyan); }
+
+.confidence-bar {
+  margin: 0 16px 0;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.conf-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.conf-track { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.conf-fill { height: 100%; background: linear-gradient(90deg, var(--gold2), var(--gold)); border-radius: 2px; transition: width 0.5s; }
+
+/* Prediction pane */
+.pred-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.pred-header { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); margin-bottom: 12px; }
+.pred-state-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 14px;
+}
+.pred-arrow { font-size: 20px; color: var(--gold); }
+.pred-state-name {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 500;
+  color: var(--text); text-transform: capitalize;
+}
+.pred-conf { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); margin-top: 2px; }
+.pred-trend {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px;
+  padding: 3px 8px; border-radius: 3px; text-transform: uppercase;
+  margin-left: auto;
+}
+.pred-trend.improving { color: var(--green); background: var(--green-dim); }
+.pred-trend.stable    { color: var(--text-3); background: var(--bg3); }
+.pred-trend.deteriorating { color: var(--red); background: var(--red-dim); }
+
+.prob-bars { display: flex; flex-direction: column; gap: 6px; }
+.prob-row {
+  display: grid; grid-template-columns: 80px 1fr 38px;
+  align-items: center; gap: 8px;
+}
+.prob-label { font-family: var(--font-mono); font-size: 9px; text-transform: capitalize; color: var(--text-3); }
+.prob-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.prob-fill { height: 100%; border-radius: 2px; transition: width 0.5s; background: var(--gold); opacity: 0.6; }
+.prob-fill.top { opacity: 1; background: var(--gold); }
+.prob-pct { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); text-align: right; }
+
+/* Reasoning pane */
+.reason-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.reason-header { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+.reason-text {
+  font-family: var(--font-ui); font-size: 12.5px;
+  color: var(--text-2); line-height: 1.7;
+  padding: 12px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  border-left: 3px solid var(--gold);
+  margin-bottom: 10px;
+}
+.signals-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.signal-tag {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.5px;
+  padding: 2px 7px; border-radius: 3px;
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text-3);
+}
+.trend-note {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px;
+  color: var(--orange); padding: 8px 10px;
+  background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.2);
+  border-radius: var(--radius); margin-top: 10px; line-height: 1.6;
+  display: none;
+}
+.trend-note.visible { display: block; }
+
+/* Anomaly pane */
+.anomaly-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.anomaly-header { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.anomaly-count { background: var(--red-dim); color: var(--red); border: 1px solid rgba(240,84,90,0.3); border-radius: 20px; padding: 1px 7px; font-size: 9px; }
+.anomaly-none { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); text-align: center; padding: 20px 0; }
+.anomaly-item {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 12px;
+  margin-bottom: 6px; border-left: 3px solid var(--red);
+}
+.anomaly-item-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+.anomaly-type { font-family: var(--font-mono); font-size: 10px; color: var(--red); text-transform: capitalize; font-weight: 500; }
+.anomaly-sev {
+  font-family: var(--font-mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 3px;
+  background: var(--red-dim); color: var(--red);
+  border: 1px solid rgba(240,84,90,0.3);
+}
+.anomaly-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); }
+
+/* ── AI INSIGHT ── */
+.insight-section {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg1);
+  flex-shrink: 0;
+}
+.insight-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.insight-label {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-3); display: flex; align-items: center; gap: 8px;
+}
+.ai-chip {
+  background: linear-gradient(135deg, var(--violet), var(--gold));
+  color: #000; font-weight: 700;
+  padding: 1px 6px; border-radius: 3px; font-size: 8px; letter-spacing: 1px;
+}
+.refresh-btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--text-3); padding: 3px 8px;
+  border-radius: 3px; font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 1px; cursor: pointer;
+  transition: all var(--transition);
+}
+.refresh-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+.insight-box {
+  font-family: var(--font-ui); font-size: 12px;
+  line-height: 1.75; color: var(--text-2);
+  padding: 12px 14px; min-height: 56px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); position: relative;
+  border-left: 3px solid var(--violet);
+}
+.typing-cursor::after {
+  content: '▋'; color: var(--gold); font-size: 11px;
+  animation: cur-blink 0.7s step-end infinite;
+}
+@keyframes cur-blink { 50% { opacity: 0; } }
+
+/* ── BOTTOM ACTIONS ── */
+.bottom-actions {
+  display: flex; gap: 6px; padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg1); flex-shrink: 0;
+}
+.act-btn {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text-2); padding: 7px;
+  border-radius: var(--radius); font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  cursor: pointer; transition: all var(--transition); text-align: center;
+}
+.act-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+.act-btn.primary { border-color: rgba(245,200,66,0.3); color: var(--gold); background: var(--gold-dim); }
+
+/* ── MODAL ── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(6px); display: flex;
+  align-items: center; justify-content: center;
+  z-index: 9000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--bg1); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); width: 600px; max-height: 82vh;
+  overflow-y: auto; padding: 28px;
+  box-shadow: 0 0 80px rgba(245,200,66,0.08);
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.modal-close {
+  position: absolute; top: 14px; right: 14px;
+  background: none; border: 1px solid var(--border);
+  color: var(--text-3); width: 26px; height: 26px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 12px; transition: all var(--transition);
+}
+.modal-close:hover { border-color: var(--red); color: var(--red); }
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 26px; letter-spacing: -0.5px;
+  color: var(--text); margin-bottom: 4px;
+}
+.modal-title em { color: var(--gold); font-style: normal; }
+.modal-sub { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--text-3); margin-bottom: 22px; }
+.report-section { margin-bottom: 18px; }
+.report-section h3 {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.report-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.rstat {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px;
+}
+.rstat-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin-bottom: 3px; }
+.rstat-val { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--gold); }
+.report-insights {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px;
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-2); line-height: 2;
+}
+.report-timeline { padding: 0; }
+.tl-chart { max-height: 80px; }
+.export-btn {
+  width: 100%; background: var(--gold); color: #000;
+  border: none; padding: 11px; border-radius: var(--radius);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 2px; cursor: pointer; text-transform: uppercase;
+  transition: all var(--transition); margin-top: 6px;
+}
+.export-btn:hover { background: var(--gold2); transform: translateY(-1px); }
+
+/* ── EVENTS LOG ── */
+.events-section {
+  padding: 0 16px 12px;
+}
+.events-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; padding-top: 12px; }
+.event-item {
+  display: flex; gap: 8px; padding: 4px 0;
+  border-bottom: 1px solid rgba(31,36,54,0.5);
+  align-items: flex-start;
+}
+.event-ts { font-family: var(--font-mono); font-size: 8px; color: var(--text-3); flex-shrink: 0; margin-top: 1px; }
+.event-ic { flex-shrink: 0; font-size: 10px; }
+.event-tx { font-family: var(--font-ui); font-size: 11px; color: var(--text-3); line-height: 1.4; }
+
+/* ── BACKEND STATUS ── */
+.backend-badge {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 1px; color: var(--text-3);
+  display: flex; align-items: center; gap: 6px;
+}
+.be-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); }
+.be-dot.live { background: var(--green); }
+.be-dot.off  { background: var(--text-3); }
+
+/* Anomaly flash */
+@keyframes anomaly-flash {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: inset 0 0 40px rgba(240,84,90,0.15); }
+}
+.anomaly-active { animation: anomaly-flash 0.6s ease-in-out 4; }
+
+/* Responsive */
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; grid-template-rows: 52px 50vh 1fr; }
+  .left-panel { grid-row: 2; }
+  .right-panel { grid-row: 3; }
+  .metrics-bar { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- BOOT SCREEN -->
+<div id="boot-screen">
+  <div class="boot-logo">CBAS</div>
+  <div class="boot-sub">Cognitive Behavior Analysis System v2</div>
+  <div class="boot-progress"><div class="boot-progress-fill" id="bootBar"></div></div>
+  <div class="boot-status" id="bootStatus">INITIALIZING...</div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-backdrop" id="reportModal">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" onclick="UI.closeReport()">✕</button>
+    <div class="modal-title">Session <em>Report</em></div>
+    <div class="modal-sub" id="reportTs">—</div>
+    <div class="report-section">
+      <h3>Session Overview</h3>
+      <div class="report-grid" id="reportGrid"></div>
+    </div>
+    <div class="report-section">
+      <h3>Cognitive Timelines</h3>
+      <canvas id="reportChart" class="tl-chart"></canvas>
+    </div>
+    <div class="report-section">
+      <h3>State Distribution</h3>
+      <canvas id="distChart" style="max-height:80px;"></canvas>
+    </div>
+    <div class="report-section">
+      <h3>Key Insights</h3>
+      <div class="report-insights" id="reportInsights"></div>
+    </div>
+    <div class="report-section">
+      <h3>Recommendation</h3>
+      <div class="reason-text" id="reportRec"></div>
+    </div>
+    <div class="report-section">
+      <h3>Anomaly Log</h3>
+      <div class="report-insights" id="reportAnomalies">No anomalies recorded.</div>
+    </div>
+    <button class="export-btn" onclick="DATA.exportJSON()">⬇ EXPORT FULL SESSION JSON</button>
+  </div>
+</div>
+
+<!-- MAIN SHELL -->
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">CB</div>
+      <div>
+        <div class="brand-text"><strong>CBAS</strong> v2</div>
+      </div>
+      <span class="brand-version">RESEARCH EDITION</span>
+    </div>
+
+    <div class="topbar-center">
+      <div class="sys-pill">
+        <div class="sys-dot" id="camDot"></div>
+        <span id="camStatus">CAMERA OFF</span>
+      </div>
+      <div class="sys-pill">
+        <div class="sys-dot" id="beDot"></div>
+        <span id="beStatus">BACKEND —</span>
+      </div>
+      <div class="sys-pill" id="stateIndicator">
+        <div class="sys-dot"></div>
+        <span>AWAITING</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="top-clock" id="topClock">00:00:00</div>
+      <button class="top-btn active" id="btnH" onclick="VISION.toggle('hands')">HANDS</button>
+      <button class="top-btn active" id="btnF" onclick="VISION.toggle('face')">FACE</button>
+      <button class="top-btn active" id="btnP" onclick="VISION.toggle('pose')">POSE</button>
+      <button class="top-btn" id="btnAudio" onclick="AUDIO.toggle()">AUDIO</button>
+      <button class="top-btn" id="btnBackend" onclick="BACKEND.toggle()">BACKEND</button>
+    </div>
+  </header>
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <!-- Viewport -->
+    <div class="viewport" id="viewport">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="overlay"></canvas>
+      <div class="hud">
+        <div class="hud-corner tl"></div>
+        <div class="hud-corner tr"></div>
+        <div class="hud-corner bl"></div>
+        <div class="hud-corner br"></div>
+        <div class="hud-fps" id="fpsBadge">0 FPS</div>
+        <div class="hud-gesture" id="gestureBadge">—</div>
+        <div class="hud-state idle" id="hudState">IDLE</div>
+        <div class="hud-anomaly" id="hudAnomaly">ANOMALY</div>
+      </div>
+      <div class="start-overlay" id="startOverlay">
+        <div class="start-glyph">◎</div>
+        <div class="start-msg">VISION PROCESSING RUNS IN THIS BROWSER<br>MIC AUDIO POWERS SOUND / SPEECH FEATURES<br>EMOTION OUTPUT IS HEURISTIC — NOT DIAGNOSTIC</div>
+        <button class="start-action" onclick="VISION.start()">INITIALIZE SYSTEM</button>
+      </div>
+    </div>
+
+    <!-- Metrics bar -->
+    <div class="metrics-bar">
+      <div class="metric-cell">
+        <div class="metric-label">FOCUS</div>
+        <div class="metric-val gold" id="mFocus">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">COG. LOAD</div>
+        <div class="metric-val violet" id="mLoad">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">STRESS</div>
+        <div class="metric-val red" id="mStress">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">EYE STAB.</div>
+        <div class="metric-val" id="mEye">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">MOTION</div>
+        <div class="metric-val" id="mMotion">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">SCORE</div>
+        <div class="metric-val gold" id="mScore">—</div>
+      </div>
+    </div>
+
+    <!-- Layer tabs -->
+    <div class="layer-tabs">
+      <div class="layer-tab active" onclick="RTAB.show('charts')">TIMELINES</div>
+      <div class="layer-tab" onclick="RTAB.show('cognitive')">COGNITIVE STATE</div>
+      <div class="layer-tab" onclick="RTAB.show('prediction')">PREDICTION</div>
+      <div class="layer-tab" onclick="RTAB.show('reasoning')">REASONING</div>
+      <div class="layer-tab" onclick="RTAB.show('anomalies')">ANOMALIES</div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- Score section -->
+    <div class="score-section">
+      <div class="score-header">
+        <div class="section-label">Behavioral Signal Score</div>
+        <div class="session-timer" id="sessionTimer">00:00:00</div>
+      </div>
+      <div class="score-ring-row">
+        <div class="ring-wrap">
+          <svg class="ring-svg" viewBox="0 0 72 72">
+            <circle class="ring-track" cx="36" cy="36" r="30"/>
+            <circle class="ring-fill" id="ringFill" cx="36" cy="36" r="30"/>
+          </svg>
+          <div class="ring-num" id="ringNum">0</div>
+          <div class="ring-grade" id="ringGrade">—</div>
+        </div>
+        <div class="score-bars">
+          <div class="sbar-row">
+            <div class="sbar-lbl">Focus</div>
+            <div class="sbar-track"><div class="sbar-fill" id="bFocus" style="width:0%;background:var(--green)"></div></div>
+            <div class="sbar-pct" id="pFocus">0%</div>
+          </div>
+          <div class="sbar-row">
+            <div class="sbar-lbl">Calm</div>
+            <div class="sbar-track"><div class="sbar-fill" id="bCalm" style="width:0%;background:var(--cyan)"></div></div>
+            <div class="sbar-pct" id="pCalm">0%</div>
+          </div>
+          <div class="sbar-row">
+            <div class="sbar-lbl">Engage</div>
+            <div class="sbar-track"><div class="sbar-fill" id="bEngage" style="width:0%;background:var(--violet)"></div></div>
+            <div class="sbar-pct" id="pEngage">0%</div>
+          </div>
+          <div class="sbar-row">
+            <div class="sbar-lbl">Alert</div>
+            <div class="sbar-track"><div class="sbar-fill" id="bAlert" style="width:0%;background:var(--gold)"></div></div>
+            <div class="sbar-pct" id="pAlert">0%</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-pill idle" id="statePill">◉ AWAITING INPUT</div>
+    </div>
+
+    <!-- Tab content -->
+    <div class="tab-content">
+
+      <!-- TIMELINES TAB -->
+      <div class="tab-pane active" id="tab-charts">
+        <div class="chart-block">
+          <div class="chart-block-header">
+            <div class="chart-block-title">Focus Score</div>
+            <div class="chart-block-val" id="cvFocus">—</div>
+          </div>
+          <canvas id="chartFocus" class="chart-canvas"></canvas>
+        </div>
+        <div class="chart-block">
+          <div class="chart-block-header">
+            <div class="chart-block-title">Stress Level</div>
+            <div class="chart-block-val" id="cvStress">—</div>
+          </div>
+          <canvas id="chartStress" class="chart-canvas"></canvas>
+        </div>
+        <div class="chart-block">
+          <div class="chart-block-header">
+            <div class="chart-block-title">Cognitive Load</div>
+            <div class="chart-block-val" id="cvLoad">—</div>
+          </div>
+          <canvas id="chartLoad" class="chart-canvas"></canvas>
+        </div>
+        <div class="chart-block" style="border-bottom:none;">
+          <div class="chart-block-header">
+            <div class="chart-block-title">Motion Intensity</div>
+            <div class="chart-block-val" id="cvMotion">—</div>
+          </div>
+          <canvas id="chartMotion" class="chart-canvas"></canvas>
+        </div>
+        <div class="events-section">
+          <div class="events-label">Event Stream</div>
+          <div id="eventsLog"></div>
+        </div>
+      </div>
+
+      <!-- COGNITIVE STATE TAB -->
+      <div class="tab-pane" id="tab-cognitive">
+        <div class="cog-grid">
+          <div class="cog-card focus">
+            <div class="cog-card-label">Focus Score</div>
+            <div class="cog-card-val" id="cogFocus">0</div>
+            <div class="cog-mini-bar"><div class="cog-mini-fill" id="cogFocusBar" style="width:0%"></div></div>
+          </div>
+          <div class="cog-card load">
+            <div class="cog-card-label">Cognitive Load</div>
+            <div class="cog-card-val" id="cogLoad">0</div>
+            <div class="cog-mini-bar"><div class="cog-mini-fill" id="cogLoadBar" style="width:0%"></div></div>
+          </div>
+          <div class="cog-card stress">
+            <div class="cog-card-label">Stress Level</div>
+            <div class="cog-card-val" id="cogStress">0</div>
+            <div class="cog-mini-bar"><div class="cog-mini-fill" id="cogStressBar" style="width:0%"></div></div>
+          </div>
+          <div class="cog-card fatigue">
+            <div class="cog-card-label">Fatigue Level</div>
+            <div class="cog-card-val" id="cogFatigue">0</div>
+            <div class="cog-mini-bar"><div class="cog-mini-fill" id="cogFatigueBar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div class="confidence-bar">
+          <div class="conf-label">Model Confidence</div>
+          <div class="conf-track"><div class="conf-fill" id="confBar" style="width:0%"></div></div>
+        </div>
+        <div style="padding:12px 16px;">
+          <div class="chart-block-header" style="margin-bottom:10px;">
+            <div class="chart-block-title">Engagement</div>
+            <div class="chart-block-val" id="cogEngageVal">—</div>
+          </div>
+          <div class="sbar-track" style="height:6px;">
+            <div class="sbar-fill" id="engageBar" style="width:0%;background:linear-gradient(90deg,var(--gold2),var(--gold));height:100%;border-radius:3px;transition:width 0.5s;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREDICTION TAB -->
+      <div class="tab-pane" id="tab-prediction">
+        <div class="pred-section">
+          <div class="pred-header">Next State Prediction (30s horizon)</div>
+          <div class="pred-state-box">
+            <div class="pred-arrow">→</div>
+            <div>
+              <div class="pred-state-name" id="predState">—</div>
+              <div class="pred-conf" id="predConf">confidence: —</div>
+            </div>
+            <div class="pred-trend stable" id="predTrend">STABLE</div>
+          </div>
+          <div class="prob-bars" id="probBars"></div>
+        </div>
+        <div class="pred-section" style="border-bottom:none;">
+          <div class="pred-header">Temporal Features (30s window)</div>
+          <div id="tempFeatGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;"></div>
+        </div>
+      </div>
+
+      <!-- REASONING TAB -->
+      <div class="tab-pane" id="tab-reasoning">
+        <div class="reason-section">
+          <div class="reason-header">Why this state?</div>
+          <div class="reason-text" id="reasonText">Awaiting analysis...</div>
+          <div class="reason-header" style="margin-top:12px;">Contributing Signals</div>
+          <div class="signals-list" id="signalsList"></div>
+          <div class="trend-note" id="trendNote"></div>
+        </div>
+        <div class="reason-section">
+          <div class="reason-header">Recommendation</div>
+          <div class="reason-text" id="recText" style="border-left-color:var(--green);">—</div>
+        </div>
+      </div>
+
+      <!-- ANOMALIES TAB -->
+      <div class="tab-pane" id="tab-anomalies">
+        <div class="anomaly-section">
+          <div class="anomaly-header">
+            Anomaly Log
+            <span class="anomaly-count" id="anomalyCount">0</span>
+          </div>
+          <div id="anomalyList"><div class="anomaly-none">No anomalies detected.</div></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Live multimodal signals -->
+    <div class="live-signals">
+      <div class="section-label" style="margin-bottom:9px;">LIVE MULTIMODAL SIGNALS</div>
+      <div class="live-grid">
+        <div class="live-card"><div class="live-label">Face / Expression</div><div class="live-value info" id="liveExpression">—</div></div>
+        <div class="live-card"><div class="live-label">Eyes / Gaze</div><div class="live-value" id="liveEyes">—</div></div>
+        <div class="live-card"><div class="live-label">Hands</div><div class="live-value ai" id="liveHands">—</div></div>
+        <div class="live-card"><div class="live-label">Pose / Motion</div><div class="live-value ok" id="livePose">—</div></div>
+        <div class="live-card"><div class="live-label">Audio</div><div class="live-value" id="liveAudio">MIC OFF</div><div class="audio-meter"><div class="audio-meter-fill" id="audioMeter"></div></div></div>
+        <div class="live-card"><div class="live-label">Speech</div><div class="live-value" id="liveSpeech">—</div></div>
+      </div>
+      <div class="test-row"><button class="test-btn" onclick="AUDIO.testMic()">TEST MIC</button><button class="test-btn" onclick="VISION.testDetectors()">TEST CAMERA</button></div>
+      <div class="signal-note">Expression output describes visible landmark cues only. It does not diagnose depression, mental illness, or determine a person's true emotional state.</div>
+    </div>
+
+    <!-- AI Insight -->
+    <div class="insight-section">
+      <div class="insight-header">
+        <div class="insight-label">
+          <span class="ai-chip">AI</span>
+          BEHAVIORAL INSIGHT
+        </div>
+        <button class="refresh-btn" onclick="INSIGHT.refresh()">↻ REFRESH</button>
+      </div>
+      <div class="insight-box" id="insightBox">
+        Initializing insight engine...
+      </div>
+    </div>
+
+    <!-- Bottom actions -->
+    <div class="bottom-actions">
+      <button class="act-btn primary" onclick="UI.openReport()">📊 REPORT</button>
+      <button class="act-btn" onclick="DATA.reset()">↺ RESET</button>
+      <button class="act-btn" onclick="DATA.exportJSON()">⬇ EXPORT</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════════
+// CognitiveLoad AI — Frontend Intelligence System
+// Architecture: Perception → Feature Engine → Backend API → UI
+// ════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────
+// CONFIGURATION
+// ─────────────────────────────────────────────
+const CONFIG = {
+  BACKEND_URL: (localStorage.getItem('cbas_backend_url') || window.location.origin),
+  API_SEND_INTERVAL_MS: 1500,     // send frame to backend every 1.5s
+  INSIGHT_INTERVAL_MS: 18000,     // refresh AI insight every 18s
+  EMA_ALPHA: 0.15,
+  CHART_BUFFER_SIZE: 80,
+  KALMAN_Q: 0.08,
+  KALMAN_R: 0.5,
+};
+
+// Allow the same frontend to run locally or against a deployed API.
+// In production the API is same-origin, which avoids mixed-content/CORS surprises.
+function setBackendUrl(url) {
+  const normalized = (url || '').trim().replace(/\/$/, '') || window.location.origin;
+  localStorage.setItem('cbas_backend_url', normalized);
+  CONFIG.BACKEND_URL = normalized;
+}
+
+// ─────────────────────────────────────────────
+// SESSION STATE
+// ─────────────────────────────────────────────
+const SESSION = {
+  id: crypto.randomUUID(),
+  started: null,
+  frameCount: 0,
+  fps: 0, fpsFrames: 0, fpsLastTs: 0,
+  running: false,
+  backendActive: false,
+  layers: { hands: true, face: true, pose: true },
+
+  // Perception data (latest frame)
+  perc: {
+    face: false, hands: false, pose: false,
+    gazeX: 0, gazeY: 0, eyeOpen: 1.0, blinkRate: 0,
+    headYaw: 0, headPitch: 0,
+    handVel: 0, handActivity: 0, gesture: 'IDLE',
+    bodyMotion: 0, shoulderLevel: 0, spineAngle: 0,
+    attentionRaw: 0, movementRaw: 0, eyeStabRaw: 0,
+    blinkBuffer: [], lastBlink: 0, blinkCount: 0,
+    expression: 'NEUTRAL / NO CLEAR CUE',
+    expressionConfidence: 0,
+    mouthOpen: 0,
+    smileProxy: 0,
+    browTension: 0,
+    tearProxy: 0,
+    handedness: [],
+    fingerCount: 0,
+    twoHandDistance: 0,
+    gestureScore: 0,
+    speechTranscript: '',
+    audioLevel: 0,
+  },
+
+  // Previous frame for velocity
+  prev: { handLM: null, poseLM: null, eyeCenter: null },
+
+  // Smoothed values (EMA)
+  smooth: {
+    attention: 0, movement: 0, eyeStab: 0, handActivity: 0,
+  },
+
+  // Kalman states
+  kalman: {
+    att: { x: 0, p: 1 },
+    mov: { x: 0, p: 1 },
+  },
+
+  // Backend response cache
+  backend: {
+    cogState: null, explanation: null, anomaly: null,
+    prediction: null, score: null, features: null,
+  },
+
+  // History
+  history: {
+    focus: new Array(CONFIG.CHART_BUFFER_SIZE).fill(0),
+    stress: new Array(CONFIG.CHART_BUFFER_SIZE).fill(0),
+    load: new Array(CONFIG.CHART_BUFFER_SIZE).fill(0),
+    motion: new Array(CONFIG.CHART_BUFFER_SIZE).fill(0),
+  },
+
+  // Anomalies
+  anomalies: [],
+
+  // Events
+  events: [],
+
+  // State tracking
+  currentState: 'idle',
+};
+
+// ─────────────────────────────────────────────
+// SIGNAL PROCESSING
+// ─────────────────────────────────────────────
+function kalman(state, z) {
+  state.p += CONFIG.KALMAN_Q;
+  const k = state.p / (state.p + CONFIG.KALMAN_R);
+  state.x += k * (z - state.x);
+  state.p *= (1 - k);
+  return state.x;
+}
+function ema(curr, prev, a = CONFIG.EMA_ALPHA) {
+  return a * curr + (1 - a) * prev;
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ─────────────────────────────────────────────
+// CANVAS UTILITIES
+// ─────────────────────────────────────────────
+const $vid = () => document.getElementById('video');
+const $cnv = () => document.getElementById('overlay');
+const $ctx = () => $cnv().getContext('2d');
+
+function ensureCanvasSize() {
+  const v = $vid();
+  const c = $cnv();
+  if (v.videoWidth && c.width !== v.videoWidth) {
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+  }
+}
+function clearCanvas() {
+  const c = $cnv();
+  $ctx().clearRect(0, 0, c.width, c.height);
+}
+
+// ─────────────────────────────────────────────
+// MEDIAPIPE INSTANCES
+// ─────────────────────────────────────────────
+const MP = { hands: null, face: null, pose: null };
+
+function initMediaPipe() {
+  MP.hands = new Hands({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  });
+  MP.hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+  MP.hands.onResults(onHandResults);
+
+  MP.face = new FaceMesh({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+  });
+  MP.face.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+  MP.face.onResults(onFaceResults);
+
+  MP.pose = new Pose({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
+  });
+  MP.pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, enableSegmentation: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+  MP.pose.onResults(onPoseResults);
+}
+
+// ─────────────────────────────────────────────
+// HAND TRACKING
+// ─────────────────────────────────────────────
+function onHandResults(res) {
+  if (!SESSION.layers.hands) return;
+  const c = $ctx(); const W = $cnv().width; const H = $cnv().height;
+  const hands = res.multiHandLandmarks || [];
+  SESSION.perc.hands = hands.length > 0;
+
+  if (hands.length) {
+    hands.forEach((lm, idx) => {
+      drawConnectors(c, lm, HAND_CONNECTIONS, { color: idx === 0 ? 'rgba(139,92,246,0.8)' : 'rgba(61,214,245,0.8)', lineWidth: 1.7 });
+      drawLandmarks(c, lm, { color: idx === 0 ? 'rgba(167,139,250,0.95)' : 'rgba(125,211,252,0.95)', lineWidth: 1, radius: 2.6 });
+    });
+    const lm = hands[0];
+    if (SESSION.prev.handLM) {
+      let d = 0;
+      for (let i=0;i<lm.length;i++) {
+        const dx=(lm[i].x-SESSION.prev.handLM[i].x)*W;
+        const dy=(lm[i].y-SESSION.prev.handLM[i].y)*H;
+        d += Math.hypot(dx,dy);
+      }
+      SESSION.perc.handVel = d/lm.length;
+    }
+    SESSION.prev.handLM = lm.map(p=>({x:p.x,y:p.y}));
+    SESSION.perc.handActivity = clamp(SESSION.perc.handVel*5,0,100);
+    SESSION.perc.gesture = hands.length===2 && dist2(hands[0][0],hands[1][0])<0.12 ? 'HANDS TOGETHER' : classifyGesture(lm,SESSION.perc.handVel);
+    SESSION.perc.fingerCount = fingerState(lm).filter(Boolean).length;
+    SESSION.perc.twoHandDistance = hands.length===2 ? dist2(hands[0][0],hands[1][0]) : 0;
+  } else {
+    SESSION.perc.handVel=0; SESSION.perc.handActivity=0; SESSION.perc.gesture='NO HANDS';
+    SESSION.perc.fingerCount=0; SESSION.perc.twoHandDistance=0; SESSION.prev.handLM=null;
+  }
+  document.getElementById('gestureBadge').textContent = SESSION.perc.gesture;
+}
+
+// ─────────────────────────────────────────────
+// FACE MESH
+// ─────────────────────────────────────────────
+function classifyExpression(lm) {
+  // Landmark geometry gives heuristic VISUAL CUES, not clinical or definitive emotions.
+  const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  const faceW=d(lm[234],lm[454])+1e-6;
+  const mouthW=d(lm[61],lm[291])/faceW;
+  const mouthOpen=d(lm[13],lm[14])/faceW;
+  const browL=d(lm[107],lm[159])/faceW;
+  const browR=d(lm[336],lm[386])/faceW;
+  const smile=clamp((mouthW-0.28)*260,0,100);
+  const open=clamp((mouthOpen-0.015)*500,0,100);
+  const brow=clamp(((browL+browR)-0.11)*420,0,100);
+  SESSION.perc.smileProxy=smile; SESSION.perc.mouthOpen=open; SESSION.perc.browTension=brow;
+  let label='NEUTRAL / NO CLEAR CUE'; let conf=35;
+  if (smile>62 && open<55) { label='POSITIVE / SMILE CUE'; conf=Math.min(92,55+smile*.35); }
+  else if (open>72 && brow<55) { label='SURPRISE-LIKE CUE'; conf=Math.min(88,55+open*.3); }
+  else if (brow>65 && smile<40) { label='TENSION / CONCERN CUE'; conf=Math.min(82,50+brow*.35); }
+  else if (open>50 && smile<35) { label='MOUTH-OPEN / AROUSAL CUE'; conf=62; }
+  SESSION.perc.expression=label; SESSION.perc.expressionConfidence=conf;
+  return {label,conf};
+}
+
+function onFaceResults(res) {
+  if (!SESSION.layers.face) return;
+  const c = $ctx(); const W = $cnv().width; const H = $cnv().height;
+
+  SESSION.perc.face = !!(res.multiFaceLandmarks?.length);
+
+  if (SESSION.perc.face) {
+    const lm = res.multiFaceLandmarks[0];
+    classifyExpression(lm);
+
+    // Iris
+    const irisL = lm[468], irisR = lm[473];
+    if (irisL && irisR) {
+      [irisL, irisR].forEach(p => {
+        c.beginPath();
+        c.arc(p.x*W, p.y*H, 7, 0, 2*Math.PI);
+        c.strokeStyle = 'rgba(61,214,245,0.75)';
+        c.lineWidth = 1.5;
+        c.stroke();
+        c.beginPath();
+        c.arc(p.x*W, p.y*H, 2, 0, 2*Math.PI);
+        c.fillStyle = 'rgba(61,214,245,0.9)';
+        c.fill();
+      });
+    }
+
+    // Eye outline (key landmarks)
+    const eyeSet = [[33,7,163,144,145,153,154,155,133], [362,382,381,380,374,373,390,249,263]];
+    eyeSet.forEach(idx => {
+      const pts = idx.map(i => lm[i]).filter(Boolean);
+      if (!pts.length) return;
+      c.beginPath();
+      pts.forEach((p, i) => i === 0 ? c.moveTo(p.x*W, p.y*H) : c.lineTo(p.x*W, p.y*H));
+      c.closePath();
+      c.strokeStyle = 'rgba(61,214,245,0.35)';
+      c.lineWidth = 1;
+      c.stroke();
+    });
+
+    // Face oval
+    const ovalIdx = [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+    const ovals = ovalIdx.map(i => lm[i]).filter(Boolean);
+    if (ovals.length) {
+      c.beginPath();
+      ovals.forEach((p,i) => i===0 ? c.moveTo(p.x*W, p.y*H) : c.lineTo(p.x*W, p.y*H));
+      c.closePath();
+      c.strokeStyle = 'rgba(61,214,245,0.1)';
+      c.lineWidth = 1;
+      c.stroke();
+    }
+
+    // EAR
+    const ear = (eyeAR(lm, [33,160,158,133,153,144]) + eyeAR(lm, [362,385,387,263,373,380])) / 2;
+    SESSION.perc.eyeOpen = clamp(ear * 5, 0, 1);
+
+    // Blink detection
+    if (ear < 0.2 && Date.now() - SESSION.perc.lastBlink > 200) {
+      SESSION.perc.blinkCount++;
+      SESSION.perc.lastBlink = Date.now();
+      SESSION.perc.blinkBuffer.push(Date.now());
+    }
+    SESSION.perc.blinkBuffer = SESSION.perc.blinkBuffer.filter(t => Date.now()-t < 60000);
+    SESSION.perc.blinkRate = SESSION.perc.blinkBuffer.length;
+
+    // Gaze
+    if (irisL && irisR) {
+      const leC = { x: (lm[33].x+lm[133].x)/2, y: (lm[33].y+lm[133].y)/2 };
+      const reC = { x: (lm[362].x+lm[263].x)/2, y: (lm[362].y+lm[263].y)/2 };
+      SESSION.perc.gazeX = ((irisL.x - leC.x) + (irisR.x - reC.x)) / 2 * 50;
+      SESSION.perc.gazeY = ((irisL.y - leC.y) + (irisR.y - reC.y)) / 2 * 50;
+    }
+
+    // Head pose
+    if (lm[234] && lm[454]) SESSION.perc.headYaw = (lm[234].x - lm[454].x) * 100;
+    if (lm[1] && lm[33]) SESSION.perc.headPitch = (lm[1].y - (lm[33].y+lm[263].y)/2) * 100;
+
+    // Eye stability
+    const ec = { x: SESSION.perc.gazeX, y: SESSION.perc.gazeY };
+    if (SESSION.prev.eyeCenter) {
+      const dx = ec.x - SESSION.prev.eyeCenter.x;
+      const dy = ec.y - SESSION.prev.eyeCenter.y;
+      const eyeMov = Math.sqrt(dx*dx+dy*dy);
+      const gazeDev = Math.sqrt(ec.x**2+ec.y**2);
+      const headPen = Math.min(30, Math.abs(SESSION.perc.headYaw)*2);
+      SESSION.perc.eyeStabRaw = clamp(100 - gazeDev*3 - eyeMov*10 - headPen, 0, 100);
+    }
+    SESSION.prev.eyeCenter = ec;
+
+    // Attention
+    const facePts = 30;
+    const eyePts = SESSION.perc.eyeOpen * 20;
+    const stabPts = (SESSION.perc.eyeStabRaw/100) * 25;
+    const headPts = Math.max(0, 10 - Math.abs(SESSION.perc.headYaw)*0.5);
+    const movPen = Math.min(15, SESSION.smooth.movement * 0.15);
+    SESSION.perc.attentionRaw = clamp(facePts + eyePts + stabPts + headPts - movPen, 0, 100);
+
+  } else {
+    SESSION.perc.eyeOpen = 0;
+    SESSION.perc.attentionRaw = 0;
+    SESSION.perc.eyeStabRaw = 0;
+  }
+}
+
+function eyeAR(lm, idx) {
+  const [p1,p2,p3,p4,p5,p6] = idx.map(i => lm[i]);
+  if (!p1||!p4) return 0.3;
+  const d = (a,b) => Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);
+  return (d(p2,p6)+d(p3,p5)) / (2*d(p1,p4) + 1e-6);
+}
+
+// ─────────────────────────────────────────────
+// POSE ESTIMATION
+// ─────────────────────────────────────────────
+function onPoseResults(res) {
+  if (!SESSION.layers.pose) return;
+  const c = $ctx(); const W = $cnv().width; const H = $cnv().height;
+
+  SESSION.perc.pose = !!(res.poseLandmarks?.length);
+
+  if (SESSION.perc.pose) {
+    const lm = res.poseLandmarks;
+    const conns = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24]];
+
+    for (const [a,b] of conns) {
+      if (!lm[a]||!lm[b]) continue;
+      c.beginPath();
+      c.moveTo(lm[a].x*W, lm[a].y*H);
+      c.lineTo(lm[b].x*W, lm[b].y*H);
+      c.strokeStyle = 'rgba(46,204,143,0.6)';
+      c.lineWidth = 2;
+      c.stroke();
+    }
+
+    [11,12,13,14,15,16,23,24].forEach(i => {
+      if (!lm[i]) return;
+      c.beginPath();
+      c.arc(lm[i].x*W, lm[i].y*H, 4, 0, 2*Math.PI);
+      c.fillStyle = 'rgba(52,211,153,0.85)';
+      c.fill();
+    });
+
+    // Shoulder asymmetry
+    if (lm[11]&&lm[12]) SESSION.perc.shoulderLevel = Math.abs(lm[11].y - lm[12].y)*100;
+
+    // Spine angle
+    if (lm[11]&&lm[12]&&lm[23]&&lm[24]) {
+      const sM = {x:(lm[11].x+lm[12].x)/2, y:(lm[11].y+lm[12].y)/2};
+      const hM = {x:(lm[23].x+lm[24].x)/2, y:(lm[23].y+lm[24].y)/2};
+      SESSION.perc.spineAngle = Math.atan2(hM.x-sM.x, hM.y-sM.y) * 180/Math.PI;
+    }
+
+    // Motion intensity
+    if (SESSION.prev.poseLM) {
+      let tot = 0;
+      [0,11,12,13,14,15,16].forEach(i => {
+        if (!lm[i]||!SESSION.prev.poseLM[i]) return;
+        const dx=(lm[i].x-SESSION.prev.poseLM[i].x)*W;
+        const dy=(lm[i].y-SESSION.prev.poseLM[i].y)*H;
+        tot += Math.sqrt(dx*dx+dy*dy);
+      });
+      SESSION.perc.bodyMotion = clamp(tot/7*6, 0, 100);
+    }
+    SESSION.prev.poseLM = lm.map(p => ({x:p.x,y:p.y}));
+    SESSION.perc.movementRaw = SESSION.perc.bodyMotion;
+  } else {
+    SESSION.perc.bodyMotion = 0;
+    SESSION.perc.movementRaw = 0;
+  }
+}
+
+// ─────────────────────────────────────────────
+// FRONTEND METRICS ENGINE
+// (runs every frame regardless of backend)
+// ─────────────────────────────────────────────
+function computeLocalMetrics() {
+  // Kalman + EMA smoothing
+  const kAtt = kalman(SESSION.kalman.att, SESSION.perc.attentionRaw);
+  const kMov = kalman(SESSION.kalman.mov, SESSION.perc.bodyMotion);
+
+  SESSION.smooth.attention = ema(kAtt, SESSION.smooth.attention, 0.12);
+  SESSION.smooth.movement  = ema(kMov, SESSION.smooth.movement, 0.14);
+  SESSION.smooth.eyeStab   = ema(SESSION.perc.eyeStabRaw, SESSION.smooth.eyeStab, 0.1);
+  SESSION.smooth.handActivity = ema(SESSION.perc.handActivity, SESSION.smooth.handActivity, 0.15);
+}
+
+// ─────────────────────────────────────────────
+// AUDIO / SPEECH
+// ─────────────────────────────────────────────
+const AUDIO = {
+  ctx:null, analyser:null, source:null, data:null, raf:null, stream:null, enabled:false, recognition:null,
+  async init(stream) {
+    try {
+      const track = stream.getAudioTracks()[0];
+      if (!track) return false;
+      const audioStream = new MediaStream([track]);
+      this.stream = audioStream;
+      this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+      this.analyser = this.ctx.createAnalyser(); this.analyser.fftSize=512;
+      this.source = this.ctx.createMediaStreamSource(audioStream); this.source.connect(this.analyser);
+      this.data = new Uint8Array(this.analyser.fftSize); this.enabled=true;
+      document.getElementById('btnAudio').classList.add('active');
+      document.getElementById('liveAudio').textContent='MIC READY';
+      this._loop();
+      this.startSpeechRecognition();
+      return true;
+    } catch(e) {
+      document.getElementById('liveAudio').textContent='MIC ERROR';
+      return false;
+    }
+  },
+  _loop(){
+    if(!this.enabled||!this.analyser) return;
+    this.analyser.getByteTimeDomainData(this.data);
+    let sum=0; for(const v of this.data){ const x=(v-128)/128; sum+=x*x; }
+    const rms=Math.sqrt(sum/this.data.length); const pct=clamp(rms*320,0,100);
+    SESSION.perc.audioLevel=pct; document.getElementById('audioMeter').style.width=pct+'%';
+    document.getElementById('liveAudio').textContent=pct>8?'MIC • SOUND DETECTED':'MIC • QUIET';
+    this.raf=requestAnimationFrame(()=>this._loop());
+  },
+  startSpeechRecognition(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ document.getElementById('liveSpeech').textContent='NOT SUPPORTED'; return; }
+    try{
+      const r=new SR(); r.continuous=true; r.interimResults=true; r.lang='en-US';
+      r.onresult=(ev)=>{ let out=''; for(let i=ev.resultIndex;i<ev.results.length;i++) out+=ev.results[i][0].transcript; SESSION.perc.speechTranscript=out.trim(); document.getElementById('liveSpeech').textContent=SESSION.perc.speechTranscript||'LISTENING'; };
+      r.onerror=()=>{ document.getElementById('liveSpeech').textContent='VOICE INPUT UNAVAILABLE'; };
+      r.onend=()=>{ if(this.enabled) try{ r.start(); }catch(_){} };
+      this.recognition=r; r.start();
+    }catch(e){ document.getElementById('liveSpeech').textContent='VOICE INPUT UNAVAILABLE'; }
+  },
+  async testMic(){
+    if(!SESSION.running){ alert('Start the system first, then test the microphone.'); return; }
+    if(!this.enabled){ const ok=await this.init($vid().srcObject); if(!ok){ alert('Microphone could not be initialized. Check browser microphone permission.'); return; } }
+    EVENTS.add('🎙','Microphone test active — speak or clap and watch the meter.');
+  },
+  toggle(){
+    if(this.enabled){ this.enabled=false; if(this.raf)cancelAnimationFrame(this.raf); document.getElementById('btnAudio').classList.remove('active'); document.getElementById('liveAudio').textContent='MIC PAUSED'; return; }
+    this.testMic();
+  }
+};
+
+// ─────────────────────────────────────────────
+// VISION CONTROL
+// ─────────────────────────────────────────────
+const VISION = {
+  async start() {
+    document.getElementById('startOverlay').classList.add('hidden');
+    const v = $vid();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width:{ideal:1280}, height:{ideal:720}, facingMode:'user' }, audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+      v.srcObject = stream;
+      await v.play();
+      await AUDIO.init(stream);
+      SESSION.running = true;
+      SESSION.started = Date.now();
+      requestAnimationFrame(VISION._loop);
+      setInterval(VISION._timer, 1000);
+      setTimeout(() => INSIGHT.refresh(), 8000);
+      setInterval(() => INSIGHT.refresh(), CONFIG.INSIGHT_INTERVAL_MS);
+      setInterval(BACKEND.sendFrame, CONFIG.API_SEND_INTERVAL_MS);
+      EVENTS.add('🎯', 'CBAS v2 analysis pipeline started');
+      UI.setStatus('cam', 'analyzing', 'ANALYZING');
+    } catch(e) {
+      alert('Camera permission required. Please allow access and refresh.');
+      document.getElementById('startOverlay').classList.remove('hidden');
+    }
+  },
+
+  toggle(layer) {
+    SESSION.layers[layer] = !SESSION.layers[layer];
+    const ids = { hands:'btnH', face:'btnF', pose:'btnP' };
+    document.getElementById(ids[layer]).classList.toggle('active', SESSION.layers[layer]);
+  },
+
+  testDetectors() {
+    const checks = [
+      `Camera: ${SESSION.perc.face ? 'FACE DETECTED' : 'NO FACE'}`,
+      `Hands: ${SESSION.perc.hands ? SESSION.perc.gesture : 'NO HANDS'}`,
+      `Pose: ${SESSION.perc.pose ? 'POSE DETECTED' : 'NO POSE'}`,
+      `Eyes: ${SESSION.perc.face ? 'EYE/Gaze pipeline active' : 'waiting for face'}`,
+      `Audio: ${SESSION.perc.audioLevel > 3 ? 'SIGNAL DETECTED' : 'quiet / not started'}`,
+      `Speech: ${SESSION.perc.speechTranscript ? 'speech captured' : 'no transcript yet'}`,
+      `Backend: ${SESSION.backendActive ? 'CONNECTED' : 'LOCAL ONLY'}`,
+    ];
+    checks.forEach((x,i)=>setTimeout(()=>EVENTS.add(i===0?'📷':i===1?'✋':i===2?'🧍':'👁',x),i*120));
+  },
+
+  _timer() {
+    if (!SESSION.started) return;
+    const e = Math.floor((Date.now()-SESSION.started)/1000);
+    const hh = String(Math.floor(e/3600)).padStart(2,'0');
+    const mm = String(Math.floor((e%3600)/60)).padStart(2,'0');
+    const ss = String(e%60).padStart(2,'0');
+    document.getElementById('sessionTimer').textContent = `${hh}:${mm}:${ss}`;
+  },
+
+  async _loop(ts) {
+    if (!SESSION.running) return;
+    SESSION.frameCount++;
+
+    // FPS
+    SESSION.fpsFrames++;
+    if (ts - SESSION.fpsLastTs >= 1000) {
+      SESSION.fps = Math.round(SESSION.fpsFrames * 1000 / (ts - SESSION.fpsLastTs));
+      SESSION.fpsFrames = 0;
+      SESSION.fpsLastTs = ts;
+      document.getElementById('fpsBadge').textContent = SESSION.fps + ' FPS';
+    }
+
+    ensureCanvasSize();
+    clearCanvas();
+
+    const v = $vid();
+    if (v.readyState >= 2) {
+      try {
+        if (SESSION.layers.hands) await MP.hands.send({ image: v });
+        if (SESSION.layers.face)  await MP.face.send({ image: v });
+        if (SESSION.layers.pose)  await MP.pose.send({ image: v });
+      } catch(e) {}
+    }
+
+    computeLocalMetrics();
+
+    if (SESSION.frameCount % 2 === 0) UI.updateLocal();
+    if (SESSION.frameCount % 30 === 0) CHARTS.push();
+
+    requestAnimationFrame(VISION._loop);
+  },
+};
+
+// ─────────────────────────────────────────────
+// BACKEND INTEGRATION
+// ─────────────────────────────────────────────
+const BACKEND = {
+  enabled: false,
+  _lastOk: false,
+
+  toggle() {
+    BACKEND.enabled = !BACKEND.enabled;
+    document.getElementById('btnBackend').classList.toggle('active', BACKEND.enabled);
+    if (BACKEND.enabled) {
+      BACKEND.healthCheck();
+      EVENTS.add('🔌', 'Backend connection enabled');
+    } else {
+      UI.setStatus('be', 'off', 'OFFLINE');
+      EVENTS.add('🔌', 'Backend connection disabled');
+    }
+  },
+
+  async healthCheck() {
+    try {
+      const r = await fetch(`${CONFIG.BACKEND_URL}/health`, { signal: AbortSignal.timeout(2000) });
+      if (r.ok) {
+        SESSION.backendActive = true;
+        UI.setStatus('be', 'live', 'CONNECTED');
+        if (!BACKEND._lastOk) EVENTS.add('✅', `Backend connected: ${CONFIG.BACKEND_URL}`);
+        BACKEND._lastOk = true;
+      }
+    } catch(e) {
+      SESSION.backendActive = false;
+      UI.setStatus('be', 'off', 'OFFLINE');
+      BACKEND._lastOk = false;
+    }
+  },
+
+  async sendFrame() {
+    if (!BACKEND.enabled || !SESSION.running) return;
+
+    const payload = {
+      frame: {
+        session_id: SESSION.id,
+        frame_ts: Date.now(),
+        face_detected: SESSION.perc.face,
+        hands_detected: SESSION.perc.hands,
+        pose_detected: SESSION.perc.pose,
+        gaze_x: SESSION.perc.gazeX,
+        gaze_y: SESSION.perc.gazeY,
+        eye_openness: SESSION.perc.eyeOpen,
+        blink_rate: SESSION.perc.blinkRate,
+        head_yaw: SESSION.perc.headYaw,
+        head_pitch: SESSION.perc.headPitch,
+        hand_velocity: SESSION.perc.handVel,
+        hand_activity: SESSION.perc.handActivity,
+        gesture: SESSION.perc.gesture,
+        body_motion: SESSION.perc.bodyMotion,
+        shoulder_level: SESSION.perc.shoulderLevel,
+        spine_angle: SESSION.perc.spineAngle,
+        attention_raw: SESSION.perc.attentionRaw,
+        movement_raw: SESSION.perc.movementRaw,
+        eye_stability_raw: SESSION.perc.eyeStabRaw,
+      }
+    };
+
+    try {
+      const r = await fetch(`${CONFIG.BACKEND_URL}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(3000),
+      });
+
+      if (r.ok) {
+        const data = await r.json();
+        SESSION.backend.cogState  = data.cognitive_state;
+        SESSION.backend.explanation = data.explanation;
+        SESSION.backend.anomaly   = data.anomaly;
+        SESSION.backend.prediction = data.prediction;
+        SESSION.backend.score     = data.behavioral_score;
+        SESSION.backend.features  = data.temporal_features;
+
+        UI.updateBackend(data);
+
+        if (data.anomaly?.anomaly) {
+          ANOMALIES.add(data.anomaly);
+        }
+        SESSION.backendActive = true;
+      }
+    } catch(e) {
+      // Silently fail — frontend still runs locally
+    }
+  },
+
+  async fetchInsight() {
+    if (!BACKEND.enabled || !SESSION.backendActive) return null;
+    try {
+      const r = await fetch(`${CONFIG.BACKEND_URL}/session/${SESSION.id}/insight`, { signal: AbortSignal.timeout(4000) });
+      if (r.ok) return await r.json();
+    } catch(e) {}
+    return null;
+  },
+
+  async fetchReport() {
+    if (!BACKEND.enabled || !SESSION.backendActive) return null;
+    try {
+      const r = await fetch(`${CONFIG.BACKEND_URL}/session/${SESSION.id}/report`, { signal: AbortSignal.timeout(5000) });
+      if (r.ok) return await r.json();
+    } catch(e) {}
+    return null;
+  },
+};
+
+// ─────────────────────────────────────────────
+// FRONTEND INSIGHT ENGINE
+// (works without backend — deterministic)
+// ─────────────────────────────────────────────
+const INSIGHT = {
+  async refresh() {
+    const el = document.getElementById('insightBox');
+    el.classList.add('typing-cursor');
+
+    // Try backend first
+    const backendData = await BACKEND.fetchInsight();
+    if (backendData?.insight) {
+      INSIGHT._typewrite(el, backendData.insight);
+      return;
+    }
+
+    // Frontend fallback
+    INSIGHT._typewrite(el, INSIGHT._generate());
+  },
+
+  _generate() {
+    const s = SESSION.currentState;
+    const a = Math.round(SESSION.smooth.attention);
+    const m = Math.round(SESSION.smooth.movement);
+    const e = Math.round(SESSION.smooth.eyeStab);
+    const cs = SESSION.backend.cogState;
+
+    const focus = cs ? Math.round(cs.focus_score) : a;
+    const stress = cs ? Math.round(cs.stress_level) : Math.round(m*0.6);
+    const load = cs ? Math.round(cs.cognitive_load) : 30;
+
+    const bank = {
+      focused: [
+        `High-quality cognitive engagement detected. Focus score: ${focus}/100. Eye stability at ${e}% indicates sustained attentional fixation. Low body motion (${m}%) confirms minimal physical restlessness. Current state is consistent with deep task processing.`,
+        `Strong focus window observed — ${focus}/100 focus score, ${e}% gaze stability. Sustained attentional state detected with low motor interference. Capitalize on this window for your most demanding cognitive tasks.`,
+      ],
+      distracted: [
+        `Attention fragmentation detected. Focus has dropped to ${focus}/100 with eye stability at ${e}%. Gaze deviation suggests mind-wandering or external stimuli interference. Consider eliminating visual distractors from your environment.`,
+        `Focus disruption pattern active. Current focus: ${focus}/100. Reduced gaze coherence and increased micro-movements suggest task-switching or distraction. A 2-minute intentional refocus exercise may help restore concentration.`,
+      ],
+      stressed: [
+        `Elevated arousal signature detected. Stress indicators: ${stress}/100. Rapid body motion (${m}%) and hand velocity suggest heightened autonomic response. Box breathing (4-4-4-4) is recommended to regulate physiological arousal state.`,
+        `Elevated arousal/motion pattern flagged across multiple channels. Movement index: ${m}%, stress score: ${stress}/100. Physical manifestation of cognitive pressure detected. Consider brief environmental disengagement to reset stress response.`,
+      ],
+      fatigued: [
+        `Fatigue indicators present. Reduced eye openness and declining attention trend suggest psychomotor slowing. Sustained cognitive work without rest leads to performance degradation. A 10-minute break is strongly recommended.`,
+        `Ocular and attentional changes are present across the observed window. Consider implementing the 20-20-20 rule: every 20 minutes, look at something 20 feet away for 20 seconds. Current performance may be below optimal.`,
+      ],
+      overloaded: [
+        `High cognitive load state — ${load}/100. Working memory bandwidth appears saturated. Attention is present but processing is effortful. Decompose current tasks into smaller subtasks. Reduce multitasking to restore cognitive throughput.`,
+      ],
+      idle: [`No behavioral signal. Position yourself in front of the camera to begin multi-modal cognitive analysis.`],
+      engaged: [
+        `High engagement state confirmed. Focus: ${focus}/100. Active cognitive processing with purposeful attentional control. This is an excellent state for complex problem-solving and creative work.`,
+      ],
+    };
+
+    const pool = bank[s] || bank.idle;
+    return pool[Math.floor(Math.random() * pool.length)];
+  },
+
+  _typewrite(el, text) {
+    el.textContent = '';
+    el.classList.add('typing-cursor');
+    let i = 0;
+    const iv = setInterval(() => {
+      if (i < text.length) { el.textContent += text[i++]; }
+      else { el.classList.remove('typing-cursor'); clearInterval(iv); }
+    }, 14);
+  },
+};
+
+// ─────────────────────────────────────────────
+// ANOMALY MANAGEMENT
+// ─────────────────────────────────────────────
+const ANOMALIES = {
+  add(a) {
+    const ts = new Date().toLocaleTimeString();
+    SESSION.anomalies.unshift({ ...a, ts });
+    document.getElementById('anomalyCount').textContent = SESSION.anomalies.length;
+
+    // HUD flash
+    const hudA = document.getElementById('hudAnomaly');
+    hudA.textContent = '⚠ ' + (a.type || 'ANOMALY').toUpperCase();
+    hudA.classList.add('visible');
+    setTimeout(() => hudA.classList.remove('visible'), 4000);
+
+    // Viewport flash
+    document.getElementById('viewport').classList.add('anomaly-active');
+    setTimeout(() => document.getElementById('viewport').classList.remove('anomaly-active'), 3000);
+
+    EVENTS.add('🚨', `Anomaly: ${a.type} (severity: ${(a.severity*100).toFixed(0)}%)`);
+
+    // Render list
+    ANOMALIES.render();
+  },
+
+  render() {
+    const c = document.getElementById('anomalyList');
+    if (!SESSION.anomalies.length) {
+      c.innerHTML = '<div class="anomaly-none">No anomalies detected.</div>';
+      return;
+    }
+    c.innerHTML = SESSION.anomalies.slice(0, 10).map(a => `
+      <div class="anomaly-item">
+        <div class="anomaly-item-top">
+          <div class="anomaly-type">${a.type || 'Unknown'}</div>
+          <div class="anomaly-sev">SEV ${(a.severity*100).toFixed(0)}%</div>
+        </div>
+        <div class="anomaly-meta">${a.ts} · z=${a.z_score?.toFixed(2)||'—'} · ${a.affected_metric||''}</div>
+      </div>
+    `).join('');
+  },
+};
+
+// ─────────────────────────────────────────────
+// EVENTS
+// ─────────────────────────────────────────────
+const EVENTS = {
+  add(icon, text) {
+    const ts = new Date().toLocaleTimeString();
+    SESSION.events.unshift({ icon, text, ts });
+    const c = document.getElementById('eventsLog');
+    const div = document.createElement('div');
+    div.className = 'event-item';
+    div.innerHTML = `<div class="event-ts">${ts}</div><div class="event-ic">${icon}</div><div class="event-tx">${text}</div>`;
+    c.insertBefore(div, c.firstChild);
+    while (c.children.length > 18) c.removeChild(c.lastChild);
+  },
+};
+
+// ─────────────────────────────────────────────
+// CHARTS
+// ─────────────────────────────────────────────
+let CHART_INSTANCES = {};
+
+const CHARTS = {
+  init() {
+    const makeGrad = (ctx, color) => {
+      const g = ctx.createLinearGradient(0,0,0,65);
+      g.addColorStop(0, color + '40');
+      g.addColorStop(1, color + '00');
+      return g;
+    };
+
+    const baseOpts = {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 150 },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false, min: 0, max: 100 } },
+      elements: { point: { radius: 0 }, line: { tension: 0.4, borderWidth: 2 } },
+    };
+
+    const make = (id, color) => {
+      const ctx = document.getElementById(id).getContext('2d');
+      return new Chart(ctx, {
+        type: 'line',
+        data: { labels: new Array(CONFIG.CHART_BUFFER_SIZE).fill(''), datasets: [{ data: [...new Array(CONFIG.CHART_BUFFER_SIZE).fill(0)], borderColor: color, backgroundColor: makeGrad(ctx, color), fill: true }] },
+        options: { ...baseOpts },
+      });
+    };
+
+    CHART_INSTANCES.focus  = make('chartFocus',  '#f5c842');
+    CHART_INSTANCES.stress = make('chartStress', '#f0545a');
+    CHART_INSTANCES.load   = make('chartLoad',   '#8b5cf6');
+    CHART_INSTANCES.motion = make('chartMotion', '#3dd6f5');
+  },
+
+  push() {
+    const cs = SESSION.backend.cogState;
+    SESSION.history.focus.push(cs ? cs.focus_score : SESSION.smooth.attention);
+    SESSION.history.stress.push(cs ? cs.stress_level : SESSION.smooth.movement * 0.5);
+    SESSION.history.load.push(cs ? cs.cognitive_load : 30);
+    SESSION.history.motion.push(SESSION.smooth.movement);
+
+    ['focus','stress','load','motion'].forEach(k => {
+      SESSION.history[k].shift();
+      CHART_INSTANCES[k].data.datasets[0].data = [...SESSION.history[k]];
+      CHART_INSTANCES[k].update('none');
+    });
+
+    const v = (k) => Math.round(SESSION.history[k].slice(-1)[0]);
+    document.getElementById('cvFocus').textContent  = v('focus')  + '%';
+    document.getElementById('cvStress').textContent = v('stress') + '%';
+    document.getElementById('cvLoad').textContent   = v('load')   + '%';
+    document.getElementById('cvMotion').textContent = v('motion') + '%';
+  },
+};
+
+// ─────────────────────────────────────────────
+// TAB SYSTEM
+// ─────────────────────────────────────────────
+const RTAB = {
+  show(id) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.layer-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(`tab-${id}`).classList.add('active');
+    const tabs = ['charts','cognitive','prediction','reasoning','anomalies'];
+    document.querySelectorAll('.layer-tab')[tabs.indexOf(id)]?.classList.add('active');
+  },
+};
+
+// ─────────────────────────────────────────────
+// UI UPDATES
+// ─────────────────────────────────────────────
+const UI = {
+  setStatus(which, cls, text) {
+    const dotId = which === 'cam' ? 'camDot' : 'beDot';
+    const txtId = which === 'cam' ? 'camStatus' : 'beStatus';
+    document.getElementById(dotId).className = `sys-dot ${cls}`;
+    document.getElementById(txtId).textContent = text;
+  },
+
+  updateLocal() {
+    const ex = document.getElementById('liveExpression');
+    const le = document.getElementById('liveEyes');
+    const lh = document.getElementById('liveHands');
+    const lp = document.getElementById('livePose');
+    if (ex) ex.textContent = SESSION.perc.face ? `${SESSION.perc.expression} · ${Math.round(SESSION.perc.expressionConfidence)}%` : 'NO FACE';
+    if (le) le.textContent = SESSION.perc.face ? `OPEN ${Math.round(SESSION.perc.eyeOpen*100)}% · GAZE ${SESSION.perc.gazeX.toFixed(1)},${SESSION.perc.gazeY.toFixed(1)}` : 'NO EYES';
+    if (lh) lh.textContent = SESSION.perc.hands ? `${SESSION.perc.gesture} · ${SESSION.perc.fingerCount} fingers` : 'NO HANDS';
+    if (lp) lp.textContent = SESSION.perc.pose ? `MOTION ${Math.round(SESSION.perc.bodyMotion)}%` : 'NO POSE';
+    const a = Math.round(SESSION.smooth.attention);
+    const m = Math.round(SESSION.smooth.movement);
+    const e = Math.round(SESSION.smooth.eyeStab);
+    const h = Math.round(SESSION.smooth.handActivity);
+
+    // Metrics bar (use backend data if available)
+    const cs = SESSION.backend.cogState;
+    const sc = SESSION.backend.score;
+
+    document.getElementById('mFocus').textContent  = (cs ? Math.round(cs.focus_score)   : a) + '%';
+    document.getElementById('mLoad').textContent   = (cs ? Math.round(cs.cognitive_load): '—') + (cs ? '%' : '');
+    document.getElementById('mStress').textContent = (cs ? Math.round(cs.stress_level)  : '—') + (cs ? '%' : '');
+    document.getElementById('mEye').textContent    = e + '%';
+    document.getElementById('mMotion').textContent = m + '%';
+    document.getElementById('mScore').textContent  = (sc ? sc.overall : '—') + (sc ? '' : '');
+
+    // Score ring
+    const score = sc ? sc.overall : a;
+    const grade = sc ? sc.grade : (a>80?'A':a>65?'B':a>50?'C':a>35?'D':'F');
+    const circ = 188;
+    const offset = circ - (score/100)*circ;
+    const ring = document.getElementById('ringFill');
+    ring.style.strokeDashoffset = offset;
+    ring.style.stroke = score>75?'#2ecc8f':score>55?'#f5c842':score>35?'#f97316':'#f0545a';
+    ring.style.filter = `drop-shadow(0 0 4px ${ring.style.stroke})`;
+    document.getElementById('ringNum').textContent = Math.round(score);
+    document.getElementById('ringGrade').textContent = grade;
+
+    // Score bars
+    const foc  = cs ? cs.focus_score    : a;
+    const calm = cs ? Math.max(0,100-cs.stress_level) : Math.max(0,100-m*0.5);
+    const eng  = cs ? cs.engagement     : a*0.7;
+    const alrt = cs ? Math.max(0,100-cs.fatigue_level) : Math.max(0,100-m*0.3);
+
+    UI._bar('bFocus', 'pFocus', foc);
+    UI._bar('bCalm',  'pCalm',  calm);
+    UI._bar('bEngage','pEngage',eng);
+    UI._bar('bAlert', 'pAlert', alrt);
+
+    // State pill + HUD state
+    const state = cs ? cs.dominant_state : INSIGHT._localState();
+    SESSION.currentState = state;
+    const stateLabels = {
+      focused: '🎯 HIGH FOCUS', distracted: '💭 DISTRACTED',
+      stressed: '⚡ STRESSED', fatigued: '😴 FATIGUE DETECTED',
+      overloaded: '🧠 COGNITIVE OVERLOAD', idle: '◉ NO PRESENCE', engaged: '✦ ENGAGED',
+    };
+    const pill = document.getElementById('statePill');
+    pill.className = `state-pill ${state}`;
+    pill.textContent = stateLabels[state] || state.toUpperCase();
+
+    const hud = document.getElementById('hudState');
+    hud.className = `hud-state ${state}`;
+    hud.textContent = state.toUpperCase();
+
+    // System indicator
+    const si = document.getElementById('stateIndicator');
+    si.querySelector('.sys-dot').className = `sys-dot ${state === 'focused' || state === 'engaged' ? 'online' : state === 'stressed' || state === 'distracted' ? 'offline' : 'analyzing'}`;
+    si.querySelector('span').textContent = state.toUpperCase();
+  },
+
+  updateBackend(data) {
+    const cs = data.cognitive_state;
+    const pred = data.prediction;
+    const expl = data.explanation;
+    const sc = data.behavioral_score;
+    const tf = data.temporal_features;
+
+    // Cognitive tab
+    document.getElementById('cogFocus').textContent = Math.round(cs.focus_score);
+    document.getElementById('cogLoad').textContent  = Math.round(cs.cognitive_load);
+    document.getElementById('cogStress').textContent= Math.round(cs.stress_level);
+    document.getElementById('cogFatigue').textContent = Math.round(cs.fatigue_level);
+    UI._miniBar('cogFocusBar',  cs.focus_score);
+    UI._miniBar('cogLoadBar',   cs.cognitive_load);
+    UI._miniBar('cogStressBar', cs.stress_level);
+    UI._miniBar('cogFatigueBar',cs.fatigue_level);
+    document.getElementById('confBar').style.width = (cs.confidence*100) + '%';
+    document.getElementById('cogEngageVal').textContent = Math.round(cs.engagement) + '%';
+    document.getElementById('engageBar').style.width = cs.engagement + '%';
+
+    // Prediction tab
+    document.getElementById('predState').textContent = pred.next_state;
+    document.getElementById('predConf').textContent  = `confidence: ${(pred.confidence*100).toFixed(0)}%`;
+    const tEl = document.getElementById('predTrend');
+    tEl.textContent = pred.trend_direction.toUpperCase();
+    tEl.className = `pred-trend ${pred.trend_direction}`;
+
+    const states = ['focused','distracted','stressed','fatigued','overloaded','idle','engaged'];
+    const topState = pred.next_state;
+    document.getElementById('probBars').innerHTML = states.map(s => {
+      const p = pred.probability_distribution[s] || 0;
+      return `<div class="prob-row">
+        <div class="prob-label">${s}</div>
+        <div class="prob-track"><div class="prob-fill ${s===topState?'top':''}" style="width:${p*100}%"></div></div>
+        <div class="prob-pct">${(p*100).toFixed(0)}%</div>
+      </div>`;
+    }).join('');
+
+    // Temporal features
+    if (tf) {
+      document.getElementById('tempFeatGrid').innerHTML = [
+        ['Gaze Variance', tf.gaze_variance?.toFixed(4)],
+        ['Eye Stab. Mean', tf.eye_stability_mean?.toFixed(1) + '%'],
+        ['Stab. Trend', (tf.eye_stability_trend > 0 ? '+' : '') + tf.eye_stability_trend?.toFixed(2) + '/min'],
+        ['Blink Rate', tf.blink_freq_mean?.toFixed(1) + '/min'],
+        ['Velocity Mean', tf.velocity_mean?.toFixed(2)],
+        ['Motion Entropy', tf.motion_entropy?.toFixed(3)],
+        ['Attn. Slope', (tf.attention_slope > 0 ? '+' : '') + tf.attention_slope?.toFixed(2) + '/min'],
+        ['Posture Stab.', tf.posture_stability?.toFixed(1) + '%'],
+      ].map(([l, v]) => `<div class="rstat"><div class="rstat-label">${l}</div><div class="rstat-val" style="font-size:14px;color:var(--text-2);">${v || '—'}</div></div>`).join('');
+    }
+
+    // Reasoning tab
+    document.getElementById('reasonText').textContent = expl.reason || '—';
+    document.getElementById('signalsList').innerHTML = (expl.contributing_signals || []).map(s =>
+      `<div class="signal-tag">${s}</div>`
+    ).join('');
+    document.getElementById('recText').textContent = expl.recommendation || '—';
+    const tn = document.getElementById('trendNote');
+    if (expl.trend_note) {
+      tn.textContent = '⚠ ' + expl.trend_note;
+      tn.classList.add('visible');
+    } else {
+      tn.classList.remove('visible');
+    }
+  },
+
+  _bar(fillId, pctId, val) {
+    document.getElementById(fillId).style.width = clamp(val,0,100) + '%';
+    document.getElementById(pctId).textContent = Math.round(clamp(val,0,100)) + '%';
+  },
+
+  _miniBar(id, val) {
+    document.getElementById(id).style.width = clamp(val,0,100) + '%';
+  },
+
+  openReport() {
+    document.getElementById('reportModal').classList.add('open');
+    REPORT.populate();
+  },
+
+  closeReport() {
+    document.getElementById('reportModal').classList.remove('open');
+  },
+};
+
+// local fallback state classifier
+INSIGHT._localState = function() {
+  const a = SESSION.smooth.attention;
+  const m = SESSION.smooth.movement;
+  const e = SESSION.smooth.eyeStab;
+  if (!SESSION.perc.face) return 'idle';
+  if (a > 65 && e > 55 && m < 40) return 'focused';
+  if (m > 70 || SESSION.smooth.handActivity > 70) return 'stressed';
+  if (a < 35 || e < 30) return 'distracted';
+  if (a > 50) return 'engaged';
+  return 'distracted';
+};
+
+// ─────────────────────────────────────────────
+// REPORT
+// ─────────────────────────────────────────────
+const REPORT = {
+  _reportChart: null,
+  _distChart: null,
+
+  async populate() {
+    const ts = new Date().toLocaleString();
+    document.getElementById('reportTs').textContent = `GENERATED ${ts.toUpperCase()}`;
+
+    const elapsed = SESSION.started ? Math.floor((Date.now()-SESSION.started)/1000) : 0;
+    const cs = SESSION.backend.cogState;
+    const sc = SESSION.backend.score;
+
+    // Try backend report
+    const backendReport = await BACKEND.fetchReport();
+
+    const avgFocus = backendReport?.avg_focus ?? Math.round(SESSION.smooth.attention);
+    const avgStress = backendReport?.avg_stress ?? 0;
+    const grade = backendReport?.grade ?? sc?.grade ?? '—';
+    const overallScore = backendReport?.overall_score ?? sc?.overall ?? 0;
+
+    document.getElementById('reportGrid').innerHTML = [
+      ['Session Duration', `${Math.floor(elapsed/60)}m ${elapsed%60}s`],
+      ['Frames Analyzed', SESSION.frameCount],
+      ['Avg Focus', avgFocus + '%'],
+      ['Avg Stress', avgStress + '%'],
+      ['Overall Score', overallScore],
+      ['Grade', grade],
+      ['Anomalies', SESSION.anomalies.length],
+      ['Backend Calls', SESSION.backendActive ? 'Connected' : 'Offline'],
+      ['Blink Rate', SESSION.perc.blinkRate + '/min'],
+    ].map(([l,v]) => `<div class="rstat"><div class="rstat-label">${l}</div><div class="rstat-val">${v}</div></div>`).join('');
+
+    // Timeline chart
+    if (this._reportChart) this._reportChart.destroy();
+    const rCtx = document.getElementById('reportChart').getContext('2d');
+    this._reportChart = new Chart(rCtx, {
+      type: 'line',
+      data: {
+        labels: new Array(SESSION.history.focus.length).fill(''),
+        datasets: [
+          { label: 'Focus', data: [...SESSION.history.focus], borderColor: '#f5c842', backgroundColor: 'transparent', borderWidth: 1.5, tension: 0.4, pointRadius: 0 },
+          { label: 'Stress', data: [...SESSION.history.stress], borderColor: '#f0545a', backgroundColor: 'transparent', borderWidth: 1.5, tension: 0.4, pointRadius: 0 },
+          { label: 'Load', data: [...SESSION.history.load], borderColor: '#8b5cf6', backgroundColor: 'transparent', borderWidth: 1.5, tension: 0.4, pointRadius: 0 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: '#8b95b0', font: { family: 'JetBrains Mono', size: 9 }, boxWidth: 12 } }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false, min: 0, max: 100 } },
+        animation: { duration: 0 },
+        elements: { line: { tension: 0.4 }, point: { radius: 0 } },
+      }
+    });
+
+    // Distribution doughnut
+    if (this._distChart) this._distChart.destroy();
+    const dist = backendReport?.dominant_state_pct || {};
+    const distCtx = document.getElementById('distChart').getContext('2d');
+    const stateColors = ['#f5c842','#f0545a','#8b5cf6','#3dd6f5','#2ecc8f','#4a5270','#f97316'];
+    const stateNames = ['focused','stressed','overloaded','fatigued','engaged','idle','distracted'];
+    this._distChart = new Chart(distCtx, {
+      type: 'bar',
+      data: {
+        labels: stateNames,
+        datasets: [{ data: stateNames.map(s => dist[s] || 0), backgroundColor: stateColors, borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: true, backgroundColor: '#0f1117', titleColor: '#f5c842', bodyColor: '#8b95b0', borderColor: '#1a1e2a', borderWidth: 1 } },
+        scales: {
+          x: { ticks: { color: '#4a5270', font: { size: 8, family: 'JetBrains Mono' } }, grid: { display: false } },
+          y: { display: false, max: 100 },
+        },
+        animation: { duration: 300 },
+      }
+    });
+
+    // Insights
+    const insights = backendReport?.key_insights || [
+      `Session duration: ${Math.floor(elapsed/60)} minutes`,
+      `Primary state: ${SESSION.currentState}`,
+      `Anomalies detected: ${SESSION.anomalies.length}`,
+      SESSION.smooth.attention > 70 ? 'High sustained attention detected.' : 'Moderate attention variance observed.',
+    ];
+    document.getElementById('reportInsights').innerHTML = insights.map(i => `• ${i}`).join('\n');
+    document.getElementById('reportRec').textContent = backendReport?.final_recommendation || SESSION.backend.explanation?.recommendation || 'Continue monitoring behavioral patterns.';
+
+    // Anomaly log
+    document.getElementById('reportAnomalies').innerHTML = SESSION.anomalies.length
+      ? SESSION.anomalies.slice(0,8).map(a => `[${a.ts}] ${a.type} — severity ${(a.severity*100).toFixed(0)}%`).join('\n')
+      : 'No anomalies recorded.';
+  },
+};
+
+// ─────────────────────────────────────────────
+// DATA MANAGEMENT
+// ─────────────────────────────────────────────
+const DATA = {
+  reset() {
+    SESSION.frameCount = 0;
+    SESSION.smooth = { attention:0, movement:0, eyeStab:0, handActivity:0 };
+    SESSION.history = {
+      focus: new Array(CONFIG.CHART_BUFFER_SIZE).fill(0),
+      stress: new Array(CONFIG.CHART_BUFFER_SIZE).fill(0),
+      load: new Array(CONFIG.CHART_BUFFER_SIZE).fill(0),
+      motion: new Array(CONFIG.CHART_BUFFER_SIZE).fill(0),
+    };
+    SESSION.anomalies = [];
+    SESSION.events = [];
+    SESSION.backend = { cogState:null, explanation:null, anomaly:null, prediction:null, score:null, features:null };
+    SESSION.started = Date.now();
+    document.getElementById('eventsLog').innerHTML = '';
+    document.getElementById('anomalyList').innerHTML = '<div class="anomaly-none">No anomalies detected.</div>';
+    document.getElementById('anomalyCount').textContent = '0';
+    EVENTS.add('↺', 'Session reset — analysis restarted');
+  },
+
+  exportJSON() {
+    const elapsed = SESSION.started ? Math.floor((Date.now()-SESSION.started)/1000) : 0;
+    const report = {
+      system: 'CBAS v2 — Cognitive Behavior Analysis System',
+      version: '3.0.0',
+      generated: new Date().toISOString(),
+      session: {
+        id: SESSION.id,
+        duration_seconds: elapsed,
+        total_frames: SESSION.frameCount,
+        avg_fps: SESSION.fps,
+      },
+      perception: {
+        face_detected: SESSION.perc.face,
+        blink_rate: SESSION.perc.blinkRate,
+        gesture: SESSION.perc.gesture,
+        expression_cue: SESSION.perc.expression,
+        expression_confidence: SESSION.perc.expressionConfidence,
+        finger_count: SESSION.perc.fingerCount,
+        audio_level: SESSION.perc.audioLevel,
+        speech_transcript: SESSION.perc.speechTranscript,
+      },
+      smoothed_metrics: {
+        attention: Math.round(SESSION.smooth.attention),
+        movement: Math.round(SESSION.smooth.movement),
+        eye_stability: Math.round(SESSION.smooth.eyeStab),
+        hand_activity: Math.round(SESSION.smooth.handActivity),
+      },
+      cognitive_state: SESSION.backend.cogState,
+      behavioral_score: SESSION.backend.score,
+      prediction: SESSION.backend.prediction,
+      temporal_features: SESSION.backend.features,
+      anomalies: SESSION.anomalies,
+      events: SESSION.events,
+      timelines: SESSION.history,
+      insight: document.getElementById('insightBox').textContent,
+    };
+
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CBAS_v2_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    UI.closeReport();
+  },
+};
+
+// ─────────────────────────────────────────────
+// CLOCK
+// ─────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('topClock').textContent = new Date().toLocaleTimeString('en-US', { hour12:false });
+}, 1000);
+
+// ─────────────────────────────────────────────
+// BOOT SEQUENCE
+// ─────────────────────────────────────────────
+async function boot() {
+  const bar = document.getElementById('bootBar');
+  const status = document.getElementById('bootStatus');
+
+  const step = (pct, msg) => {
+    bar.style.width = pct + '%';
+    status.textContent = msg;
+  };
+
+  step(10, 'LOADING HAND TRACKING MODEL...');
+  initMediaPipe();
+  await new Promise(r => setTimeout(r, 600));
+
+  step(40, 'LOADING FACE MESH MODEL...');
+  await new Promise(r => setTimeout(r, 600));
+
+  step(65, 'LOADING POSE ESTIMATION MODEL...');
+  await new Promise(r => setTimeout(r, 400));
+
+  step(80, 'INITIALIZING FEATURE ENGINE...');
+  CHARTS.init();
+  await new Promise(r => setTimeout(r, 300));
+
+  step(92, 'CALIBRATING COGNITIVE MODELS...');
+  await new Promise(r => setTimeout(r, 300));
+
+  step(100, 'SYSTEM READY');
+  await new Promise(r => setTimeout(r, 600));
+
+  document.getElementById('boot-screen').classList.add('fade-out');
+  setTimeout(() => document.getElementById('boot-screen').remove(), 700);
+
+  // Check backend availability
+  setTimeout(() => BACKEND.healthCheck(), 1000);
+  setInterval(() => { if (BACKEND.enabled) BACKEND.healthCheck(); }, 30000);
+
+  UI.setStatus('cam', 'off', 'AWAITING START');
+}
+
+boot();
+</script>
+</body>
+</html>
