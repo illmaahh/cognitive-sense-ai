@@ -849,6 +849,140 @@ body::after {
   .right-panel { grid-row: 3; }
   .metrics-bar { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   COGNITIVESENSE AI — AESTHETIC V5 OVERRIDES
+   Direction: premium research studio / glass / soft neon
+═══════════════════════════════════════════════════════════════ */
+:root {
+  --bg0: #070914;
+  --bg1: #0a0e1b;
+  --bg2: #0d1324;
+  --bg3: #11192d;
+  --bg4: #17213a;
+  --border: rgba(151, 170, 255, 0.12);
+  --border2: rgba(151, 170, 255, 0.18);
+  --gold: #a78bfa;
+  --gold2: #7c3aed;
+  --gold-dim: rgba(167,139,250,0.12);
+  --gold-glow: 0 0 28px rgba(167,139,250,0.22);
+  --cyan: #5ee7ff;
+  --cyan-dim: rgba(94,231,255,0.11);
+  --green: #6ee7b7;
+  --green-dim: rgba(110,231,183,0.11);
+  --red: #fb7185;
+  --red-dim: rgba(251,113,133,0.11);
+  --violet: #c4b5fd;
+  --violet-dim: rgba(196,181,253,0.11);
+  --orange: #fbbf77;
+  --text: #eef2ff;
+  --text-2: #a9b3cf;
+  --text-3: #687493;
+  --font-display: 'Instrument Serif', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-ui: 'Outfit', sans-serif;
+  --radius: 12px;
+  --radius-lg: 18px;
+}
+html, body {
+  background:
+    radial-gradient(circle at 15% 12%, rgba(124,58,237,.15), transparent 28%),
+    radial-gradient(circle at 86% 18%, rgba(94,231,255,.09), transparent 26%),
+    linear-gradient(160deg, #060813 0%, #0a0e1b 48%, #0b1220 100%);
+}
+body::after { opacity:.35; }
+.topbar {
+  background: rgba(7,9,20,.82);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom-color: rgba(168, 184, 255, .10);
+  box-shadow: 0 10px 30px rgba(0,0,0,.14);
+}
+.topbar::after { background: linear-gradient(90deg, transparent, var(--cyan), var(--gold), transparent); opacity:.35; }
+.brand { gap: 12px; }
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(196,181,253,.5);
+  background: linear-gradient(135deg, rgba(124,58,237,.30), rgba(94,231,255,.12));
+  box-shadow: inset 0 0 18px rgba(124,58,237,.14), 0 0 20px rgba(124,58,237,.10);
+  letter-spacing: -1px;
+}
+.brand-mark::before { background: conic-gradient(rgba(196,181,253,.08) 0deg, transparent 130deg, rgba(94,231,255,.10) 240deg, transparent 360deg); }
+.brand-text { font-size: 14px; letter-spacing: .2px; }
+.brand-text strong { color: #f7f5ff; }
+.brand-version { background: rgba(255,255,255,.03); border-color: var(--border2); color: #96a2c2; border-radius: 999px; padding: 4px 8px; }
+.sys-pill, .top-btn {
+  background: rgba(255,255,255,.03);
+  border-color: var(--border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+.top-btn { border-radius: 999px; padding: 6px 12px; }
+.top-btn:hover, .top-btn.active { border-color: rgba(196,181,253,.38); color: #eeeaff; background: rgba(124,58,237,.13); box-shadow: 0 0 20px rgba(124,58,237,.10); }
+.left-panel { border-right-color: var(--border); }
+.viewport {
+  background: linear-gradient(145deg, rgba(16,24,44,.58), rgba(5,8,18,.90));
+}
+.viewport::before {
+  background:
+    radial-gradient(circle at 70% 22%, rgba(94,231,255,.10), transparent 24%),
+    radial-gradient(circle at 38% 68%, rgba(124,58,237,.12), transparent 24%),
+    linear-gradient(180deg, rgba(255,255,255,.02), transparent 20%);
+}
+.sensor-chip, .metric-cell, .fusion-cell, .chart-block, .live-card, .cog-card, .confidence-bar, .score-section, .insight-section {
+  background: linear-gradient(180deg, rgba(255,255,255,.032), rgba(255,255,255,.015));
+  border-color: rgba(168,184,255,.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 10px 28px rgba(0,0,0,.08);
+}
+.sensor-chip:hover, .live-card:hover, .chart-block:hover, .cog-card:hover { border-color: rgba(167,139,250,.24); transform: translateY(-1px); }
+.sensor-chip, .live-card, .cog-card { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.metrics-bar { background: rgba(6,10,20,.78); border-top-color: var(--border); border-bottom-color: var(--border); }
+.metric-label, .section-label, .events-label, .reason-header, .pred-header, .live-label { color: #7480a0; letter-spacing: 1.7px; }
+.metric-val.gold, .ring-num { color: #f4efff; text-shadow: 0 0 24px rgba(167,139,250,.25); }
+.metric-val.violet { color: #d7cbff; }
+.metric-val.red { color: #fda4af; }
+.fusion-strip { background: rgba(9,13,24,.86); border-top-color: var(--border); border-bottom-color: var(--border); }
+.fusion-cell { border-right-color: rgba(168,184,255,.08); }
+.fusion-value { color: #d5ddf4; }
+.layer-tabs { background: rgba(7,11,22,.80); border-top-color: var(--border); border-bottom-color: var(--border); }
+.layer-tab { color: #73809f; }
+.layer-tab.active { color: #eeeaff; box-shadow: inset 0 -2px 0 #a78bfa; }
+.right-panel { background: rgba(7,10,18,.76); }
+.score-section { border-bottom-color: var(--border); }
+.state-pill { border-radius: 999px !important; background: rgba(255,255,255,.025); }
+.sbar-track, .conf-track { background: rgba(255,255,255,.055); }
+.sbar-fill, .conf-fill { box-shadow: 0 0 14px rgba(167,139,250,.16); }
+.ai-chip { background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border-radius: 999px; box-shadow: 0 0 18px rgba(124,58,237,.18); }
+.refresh-btn, .test-btn, .act-btn, .export-btn {
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.035) !important;
+  border-color: rgba(168,184,255,.12) !important;
+}
+.act-btn.primary, .start-action {
+  background: linear-gradient(135deg, #7c3aed, #8b5cf6) !important;
+  border-color: rgba(196,181,253,.45) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 30px rgba(124,58,237,.24), inset 0 1px 0 rgba(255,255,255,.15);
+}
+.start-overlay {
+  background: radial-gradient(circle at center, rgba(12,18,36,.46), rgba(5,8,17,.72));
+  backdrop-filter: blur(5px);
+}
+.start-glyph { color: #d8ccff; text-shadow: 0 0 28px rgba(167,139,250,.35); }
+.hr-title { color: #7e89a8; }
+.hr-main { color: #eff3ff; }
+.hr-main em { color: #c4b5fd; }
+.hud-corner { border-color: rgba(94,231,255,.45); box-shadow: 0 0 16px rgba(94,231,255,.16); }
+.neural-brand b { color: #eff3ff; }
+.neural-brand span { color: #7180a2; }
+.modal-backdrop { background: rgba(2,5,12,.82); backdrop-filter: blur(12px); }
+.modal { background: linear-gradient(180deg, rgba(15,21,39,.98), rgba(8,12,23,.98)); border-color: rgba(168,184,255,.14); box-shadow: 0 30px 90px rgba(0,0,0,.55); }
+.modal-title em { color: #c4b5fd; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,.02); }
+::-webkit-scrollbar-thumb { background: rgba(129,105,214,.35); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(167,139,250,.55); }
+
 </style>
 </head>
 <body>
@@ -856,7 +990,7 @@ body::after {
 <!-- BOOT SCREEN -->
 <div id="boot-screen">
   <div class="boot-logo">CognitiveSense</div>
-  <div class="boot-sub">MULTIMODAL INTELLIGENCE RESEARCH CONSOLE • v4.0</div>
+  <div class="boot-sub">MULTIMODAL INTELLIGENCE RESEARCH STUDIO</div>
   <div class="boot-progress"><div class="boot-progress-fill" id="bootBar"></div></div>
   <div class="boot-status" id="bootStatus">INITIALIZING...</div>
 </div>
@@ -901,11 +1035,11 @@ body::after {
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark">CB</div>
+      <div class="brand-mark">CS</div>
       <div>
         <div class="brand-text"><strong>CognitiveSense</strong> AI</div>
       </div>
-      <span class="brand-version">LIVE RESEARCH v4.0</span>
+      <span class="brand-version">RESEARCH STUDIO</span>
     </div>
 
     <div class="topbar-center">
