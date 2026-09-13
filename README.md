@@ -53,6 +53,15 @@ streamlit run app/streamlit_app.py
 
 The Streamlit app is useful for controlled task collection and research-data export. The `live_cbas/` app is the polished live-demo layer.
 
+
+## Personalized session flow
+
+On a first visit, the live console starts with a short profile form and a 10-question check-in. The answers are stored in the browser so the app can remember the visitor's preferred name and personalize the session on later visits. After the check-in, CognitiveSense AI greets the visitor with the browser speech engine and opens the live analysis console.
+
+A separate **Wellbeing** page uses the self-reported check-in together with current non-clinical observable signals to offer general focus and relaxation ideas, reading suggestions, music styles, and a lightweight supportive chat. The suggestions are wellness-oriented and are not medical diagnosis or treatment.
+
+The live camera, eye/gaze, hand, posture, audio, and FastAPI features remain available in the main analysis console.
+
 ## Live demonstration
 
 Primary deployment: **https://cognitive-sense-ai.onrender.com**
