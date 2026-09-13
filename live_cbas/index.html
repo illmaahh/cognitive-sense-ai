@@ -9,134 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous">
-
-// ─────────────────────────────────────────────
-// PERSONAL PROFILE + 10-QUESTION CHECK-IN
-// Stored in browser localStorage so the same visitor can be greeted by name later.
-// Research telemetry stays separate from this local profile.
-// ─────────────────────────────────────────────
-const PROFILE = {
-  key:'cognitivesense_profile_v6',
-  surveyKey:'cognitivesense_checkin_v6',
-  questions:[
-    'How calm do you feel right now?',
-    'How focused do you feel right now?',
-    'How mentally loaded does your current task feel?',
-    'How energetic do you feel right now?',
-    'How well did you sleep recently?',
-    'How much are worries or distractions on your mind?',
-    'How positive or comfortable is your current mood?',
-    'How overwhelmed does your current workload feel?',
-    'How motivated do you feel to continue with your current task?',
-    'What kind of support would help most right now?'
-  ],
-  labels:['Very low','Low','Medium','High','Very high'],
-  ensureQuestions(){
-    const c=document.getElementById('surveyQuestions'); if(!c || c.children.length) return;
-    c.innerHTML=this.questions.map((q,i)=>{
-      const opts=this.labels.map((lab,j)=>`<div class="opt"><input type="radio" name="q${i}" id="q${i}_${j}" value="${j}"><label for="q${i}_${j}">${lab}</label></div>`).join('');
-      return `<div class="question"><h4>${i+1}. ${q}</h4><div class="options">${opts}</div></div>`;
-    }).join('');
-  },
-  get(){try{return JSON.parse(localStorage.getItem(this.key)||'null')}catch{return null}},
-  getSurvey(){try{return JSON.parse(localStorage.getItem(this.surveyKey)||'null')}catch{return null}},
-  save(){localStorage.setItem(this.key,JSON.stringify(this.data))},
-  next(){
-    const name=(document.getElementById('profileName').value||'').trim();
-    if(!name){alert('Please enter the name you would like the system to use.');return;}
-    this.data={name,role:document.getElementById('profileRole').value,ageRange:document.getElementById('profileAge').value,goal:document.getElementById('profileGoal').value,updatedAt:new Date().toISOString()};
-    this.ensureQuestions(); document.getElementById('gateProfile').classList.remove('active'); document.getElementById('gateSurvey').classList.add('active'); document.getElementById('gateStep1').classList.remove('active'); document.getElementById('gateStep2').classList.add('active');
-  },
-  back(){document.getElementById('gateSurvey').classList.remove('active');document.getElementById('gateProfile').classList.add('active');document.getElementById('gateStep2').classList.remove('active');document.getElementById('gateStep1').classList.add('active')},
-  complete(){
-    const answers=[]; for(let i=0;i<10;i++){const el=document.querySelector(`input[name=q${i}]:checked`); if(!el){alert(`Please answer question ${i+1}.`);return} answers.push(Number(el.value));}
-    this.data.survey=answers; this.data.updatedAt=new Date().toISOString(); this.save(); localStorage.setItem(this.surveyKey,JSON.stringify({answers,completedAt:this.data.updatedAt}));
-    document.getElementById('experience-gate').classList.remove('open'); APP.onboardingComplete();
-  },
-  edit(){
-    const p=this.get(); if(!p)return; this.data=p; document.getElementById('profileName').value=p.name||''; document.getElementById('profileRole').value=p.role||'Student'; document.getElementById('profileAge').value=p.ageRange||'18–24'; document.getElementById('profileGoal').value=p.goal||'Improve focus'; this.ensureQuestions(); (p.survey||[]).forEach((v,i)=>{const el=document.querySelector(`input[name=q${i}][value="${v}"]`); if(el)el.checked=true}); document.getElementById('gateProfile').classList.add('active');document.getElementById('gateSurvey').classList.remove('active');document.getElementById('gateStep1').classList.add('active');document.getElementById('gateStep2').classList.remove('active');document.getElementById('experience-gate').classList.add('open');
-  },
-  async hydrate(){
-    const p=this.get();
-    if(!p || !p.name || !p.survey){this.ensureQuestions();return false;}
-    document.getElementById('experience-gate').classList.remove('open'); APP.onboardingComplete(); return true;
-  }
-};
-
-const APP={
-  onboardingComplete(){
-    const p=PROFILE.get();
-    if(!p)return;
-    this.user=p;
-    let w=document.getElementById('welcomeStrip');
-    if(!w){
-      w=document.createElement('div');w.id='welcomeStrip';w.className='welcome';
-      w.innerHTML=`<div><div class="welcome-title">Good to have you, <strong id="welcomeName"></strong>.</div><div class="welcome-sub">Your check-in is ready. Live signals will be shown below without making a clinical diagnosis.</div></div><div class="nav-extra"><button onclick="APP.showWellbeing()">Open wellbeing</button><button onclick="PROFILE.edit()">Update check-in</button></div>`;
-      const shell=document.querySelector('.shell'); shell.parentNode.insertBefore(w,shell);
-    }
-    document.getElementById('welcomeName').textContent=p.name;
-    w.classList.add('show');
-    this.updateWellbeing();
-    this.greet();
-  },
-  greet(){
-    const p=PROFILE.get(); if(!p?.name || !('speechSynthesis' in window)) return;
-    try{window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(`Hello ${p.name}. Good to have you here.`); u.rate=.95; u.pitch=1; u.volume=.9; window.speechSynthesis.speak(u);}catch{}
-  },
-  showMain(){document.getElementById('wellbeing-page').style.display='none';document.querySelector('.shell').style.display='grid';window.scrollTo(0,0)},
-  showWellbeing(){
-    const p=PROFILE.get(); if(!p)return;
-    this.updateWellbeing(); document.querySelector('.shell').style.display='none'; document.getElementById('wellbeing-page').style.display='block'; document.getElementById('wbName').textContent=p.name; this.seedChat();
-  },
-  updateWellbeing(){
-    const p=PROFILE.get(); const box=document.getElementById('recommendations'); const sum=document.getElementById('wbSummary'); if(!p||!p.survey||!box||!sum)return;
-    const a=p.survey;
-    const calm=Math.round(a[0]*25), focus=Math.round(a[1]*25), load=Math.round(a[2]*25), energy=Math.round(a[3]*25), sleep=Math.round(a[4]*25), worry=Math.round(a[5]*25), mood=Math.round(a[6]*25), overwhelmed=Math.round(a[7]*25), motivation=Math.round(a[8]*25), support=a[9];
-    const liveStress=Number(SESSION.backend?.cogState?.stress_level||0), liveFocus=Number(SESSION.backend?.cogState?.focus_score||SESSION.smooth.attention||0), liveLoad=Number(SESSION.backend?.cogState?.cognitive_load||0);
-    const combined={calm,focus,load,energy,sleep,worry,mood,overwhelmed,motivation,liveStress,liveFocus,liveLoad,support};
-    sum.innerHTML=[['Focus',focus+'%'],['Mental load',load+'%'],['Energy',energy+'%'],['Worry',worry+'%']].map(([k,v])=>`<div class="summary-card"><div>${k}</div><div>${v}</div></div>`).join('');
-    const recs=[];
-    if(worry>=60||liveStress>=60||overwhelmed>=60){recs.push(['CALM','Breathing reset','Try 4 seconds in, 4 seconds out for 2–3 minutes, then step away from the screen briefly.']);}
-    if(focus<55||liveFocus<50){recs.push(['FOCUS','Short focused block','Try a 20–25 minute single-task block with notifications muted and one clear goal.']);}
-    if(energy<50||sleep<50){recs.push(['ENERGY','Gentle reset','Get some water, stretch for a few minutes, and consider a short break before the next demanding task.']);}
-    if(mood<50){recs.push(['MOOD','Low-pressure comfort','Choose something familiar and easy: a quiet walk, journaling, a favorite playlist, or a short chat with someone you trust.']);}
-    if(motivation>=70){recs.push(['MOMENTUM','Use the window','You reported strong motivation. Start with the smallest concrete next action and keep the task narrow.']);}
-    recs.push(['BOOK','Reading','Try *Atomic Habits* for practical routines, or *Deep Work* for focused study sessions.']);
-    recs.push(['MUSIC','Listening','Instrumental / lo-fi, soft piano, ambient soundscapes, or nature sounds can be a low-distraction background.']);
-    box.innerHTML=recs.slice(0,6).map(r=>`<div class="rec"><div class="tag">${r[0]}</div><h4>${r[1]}</h4><p>${r[2]}</p></div>`).join('');
-    this.latest=combined;
-  },
-  seedChat(){
-    const p=PROFILE.get(); const c=document.getElementById('chat'); if(c.children.length)return; c.innerHTML=`<div class="bubble ai">Hi ${p.name}. Based on your check-in, we can keep this simple. Tell me whether you want to relax, focus, organize your thoughts, or choose something calming to read or listen to.</div>`;},
-  sendChat(){
-    const inp=document.getElementById('chatInput'); const text=(inp.value||'').trim(); if(!text)return; const c=document.getElementById('chat'); c.insertAdjacentHTML('beforeend',`<div class="bubble user"></div>`);c.lastElementChild.textContent=text;inp.value='';
-    const p=PROFILE.get(); const a=p?.survey||[]; const state=SESSION.currentState||'idle'; const focus=Math.round(SESSION.backend?.cogState?.focus_score||SESSION.smooth.attention||0); const stress=Math.round(SESSION.backend?.cogState?.stress_level||0); let reply='';
-    const lower=text.toLowerCase();
-    if(/book|read/.test(lower)) reply='For a low-pressure option, try Atomic Habits. For study and deep concentration, try Deep Work. If you want something lighter, choose a short essay or fiction chapter rather than a demanding non-fiction section.';
-    else if(/music|song|listen/.test(lower)) reply='Try instrumental music, soft piano, ambient soundscapes, or nature sounds. Keep the volume low if you are trying to concentrate.';
-    else if(/stress|anx|overwhelm|calm|relax/.test(lower)) reply=`A gentle reset may help. Your check-in suggests ${a[0]>=3?'you have some calm available to build on':'you may benefit from a short pause'}. Try 2 minutes of slow breathing, then return to one small task.`;
-    else if(/focus|study|work/.test(lower)) reply=`For focus, reduce the task to one next action. The current live focus signal is around ${focus}%. A 20–25 minute single-task block may be easier than trying to finish everything at once.`;
-    else reply=`Thanks for telling me. I am here to help you make the next few minutes easier. Your current live state is ${state}, with a focus signal around ${focus}% and a non-clinical stress proxy around ${stress}%. We can use that as a gentle cue, not a diagnosis.`;
-    setTimeout(()=>c.insertAdjacentHTML('beforeend',`<div class="bubble ai"></div>`),250); setTimeout(()=>{c.lastElementChild.textContent=reply;c.scrollTop=c.scrollHeight},280);
-  }
-};
-
-// Start the personalized flow after the original page has initialized.
-window.addEventListener('load',()=>{
-  PROFILE.ensureQuestions();
-  const p=PROFILE.get();
-  if(p?.name && p?.survey){
-    document.getElementById('experience-gate').classList.remove('open');
-    APP.onboardingComplete();
-  } else {
-    // Keep the live shell hidden until the first check-in is complete.
-    document.querySelector('.shell').style.display='none';
-    document.getElementById('experience-gate').classList.add('open');
-  }
-});
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
@@ -1110,29 +983,167 @@ body::after { opacity:.35; }
 ::-webkit-scrollbar-thumb { background: rgba(129,105,214,.35); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(167,139,250,.55); }
 
+</style>
 
-/* ─────────────────────────────────────────────
-   PERSONALIZED EXPERIENCE v6
-───────────────────────────────────────────── */
-#experience-gate{position:fixed;inset:0;z-index:11000;background:linear-gradient(145deg,#060813 0%,#0a1020 50%,#11152a 100%);display:none;overflow:auto}
-#experience-gate.open{display:block}
-.gate-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
-.gate-card{width:min(920px,100%);background:rgba(13,19,36,.94);border:1px solid rgba(151,170,255,.16);border-radius:24px;box-shadow:0 30px 100px rgba(0,0,0,.35);padding:34px;}
-.gate-brand{font:700 12px var(--font-mono);letter-spacing:2px;color:var(--cyan);text-transform:uppercase}
-.gate-title{font:600 42px var(--font-ui);letter-spacing:-1.5px;color:#f4f7ff;margin-top:10px}
-.gate-copy{max-width:700px;color:var(--text-2);line-height:1.65;margin-top:10px;font-size:15px}
-.gate-stepbar{display:flex;gap:8px;margin:24px 0 26px}.gate-step{height:5px;flex:1;border-radius:99px;background:rgba(255,255,255,.07)}.gate-step.active{background:linear-gradient(90deg,var(--violet),var(--cyan))}
-.gate-view{display:none}.gate-view.active{display:block}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{font:9px var(--font-mono);letter-spacing:1.5px;color:var(--text-3);text-transform:uppercase}.field input,.field select,.field textarea{background:#0a1020;border:1px solid var(--border2);color:var(--text);border-radius:12px;padding:12px 13px;font:14px var(--font-ui);outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(94,231,255,.55);box-shadow:0 0 0 3px rgba(94,231,255,.08)}
-.checkin-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.question{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:14px;padding:14px}.question h4{font:500 13px var(--font-ui);line-height:1.45;color:var(--text);margin-bottom:11px}.options{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.opt{position:relative}.opt input{position:absolute;opacity:0}.opt label{display:flex;align-items:center;justify-content:center;min-height:38px;padding:6px;border:1px solid var(--border);border-radius:9px;color:var(--text-2);font:10px var(--font-mono);cursor:pointer;text-align:center;transition:.2s}.opt input:checked+label{border-color:rgba(94,231,255,.65);background:rgba(94,231,255,.09);color:#fff}
-.gate-actions{display:flex;justify-content:space-between;gap:10px;margin-top:22px}.gate-btn{border:1px solid var(--border2);background:rgba(255,255,255,.03);color:var(--text);border-radius:12px;padding:11px 16px;font:600 11px var(--font-mono);letter-spacing:1px;text-transform:uppercase;cursor:pointer}.gate-btn.primary{background:linear-gradient(135deg,#7c3aed,#22d3ee);border-color:transparent;color:#061018}.gate-btn:hover{transform:translateY(-1px)}
-.welcome{padding:18px 20px;background:linear-gradient(90deg,rgba(124,58,237,.12),rgba(94,231,255,.06));border-bottom:1px solid var(--border);display:none}.welcome.show{display:flex;align-items:center;justify-content:space-between;gap:14px}.welcome-title{font:500 18px var(--font-ui);color:#fff}.welcome-title strong{color:var(--cyan)}.welcome-sub{font:10px var(--font-mono);color:var(--text-3);margin-top:3px;letter-spacing:.7px}.nav-extra{display:flex;gap:7px}.nav-extra button{background:rgba(255,255,255,.035);border:1px solid var(--border);color:var(--text-2);border-radius:10px;padding:8px 10px;font:10px var(--font-mono);cursor:pointer}.nav-extra button:hover{color:#fff;border-color:rgba(94,231,255,.4)}
-#wellbeing-page{position:fixed;inset:0;z-index:10050;background:linear-gradient(145deg,#070914,#0c1424);display:none;overflow:auto}.wellbeing-wrap{max-width:1180px;margin:0 auto;padding:24px}.wb-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}.wb-title{font:600 34px var(--font-ui);color:#fff}.wb-title span{color:var(--cyan)}.wb-sub{color:var(--text-2);margin-top:5px}.wb-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.wb-card{background:rgba(13,19,36,.9);border:1px solid var(--border);border-radius:18px;padding:20px}.wb-card h3{font:600 12px var(--font-mono);letter-spacing:1.5px;color:var(--cyan);text-transform:uppercase;margin-bottom:14px}.recommendations{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.rec{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:13px;padding:13px}.rec .tag{font:8px var(--font-mono);color:var(--violet);letter-spacing:1px;text-transform:uppercase}.rec h4{font-size:14px;color:#fff;margin:6px 0}.rec p{font-size:12px;line-height:1.55;color:var(--text-2)}.chat{display:flex;flex-direction:column;gap:9px}.bubble{padding:11px 12px;border-radius:12px;max-width:90%;font-size:12px;line-height:1.5}.bubble.ai{background:rgba(94,231,255,.07);border:1px solid rgba(94,231,255,.12);color:#dffaff}.bubble.user{background:rgba(167,139,250,.09);border:1px solid rgba(167,139,250,.13);color:#eee}.wb-input{display:flex;gap:8px;margin-top:12px}.wb-input input{flex:1;background:#0a1020;border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:#fff}.wb-input button{border:1px solid var(--border2);background:#121b31;color:#fff;border-radius:10px;padding:0 14px;cursor:pointer}.wb-note{font:9px var(--font-mono);color:var(--text-3);line-height:1.6;margin-top:12px}.survey-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.summary-card{background:rgba(255,255,255,.025);border:1px solid var(--border);padding:10px;border-radius:11px}.summary-card div:first-child{font:8px var(--font-mono);color:var(--text-3);letter-spacing:1px}.summary-card div:last-child{font:16px var(--font-ui);color:#fff;margin-top:3px}
-@media(max-width:760px){.form-grid,.checkin-grid,.wb-grid{grid-template-columns:1fr}.recommendations{grid-template-columns:1fr}.gate-title{font-size:32px}.options{grid-template-columns:repeat(3,1fr)}.survey-summary{grid-template-columns:1fr 1fr}.gate-shell{padding:14px}.gate-card{padding:20px}}
-
+<style>
+/* CognitiveSense AI personal onboarding / wellbeing layer */
+#profileGate,#surveyGate{
+ position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;
+ background:radial-gradient(circle at 20% 20%,rgba(111,89,255,.16),transparent 34%),radial-gradient(circle at 80% 70%,rgba(45,212,191,.12),transparent 32%),#060811;
+ padding:24px;overflow:auto;
+}
+.cs-gate-card{
+ width:min(720px,100%);background:rgba(12,17,31,.92);border:1px solid rgba(255,255,255,.12);
+ border-radius:26px;box-shadow:0 30px 90px rgba(0,0,0,.45);padding:32px;
+ backdrop-filter:blur(20px);color:#eef2ff;
+}
+.cs-gate-kicker{font:500 11px/1.2 "JetBrains Mono",monospace;letter-spacing:.18em;color:#8ea3ff;text-transform:uppercase;margin-bottom:12px}
+.cs-gate-title{font:600 clamp(34px,5vw,54px)/.98 "Outfit",sans-serif;letter-spacing:-.04em;margin:0 0 10px}
+.cs-gate-sub{color:#9aa7bd;line-height:1.65;max-width:610px;margin-bottom:26px}
+.cs-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cs-field label{display:block;font:500 11px/1.2 "JetBrains Mono",monospace;color:#8390a8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.cs-field input,.cs-field select{
+ width:100%;box-sizing:border-box;background:#0b1020;color:#f5f7ff;border:1px solid rgba(255,255,255,.12);
+ padding:13px 14px;border-radius:12px;outline:none;font:400 14px "Outfit",sans-serif;
+}
+.cs-field input:focus,.cs-field select:focus{border-color:#7c83ff;box-shadow:0 0 0 3px rgba(124,131,255,.14)}
+.cs-consent{display:flex;gap:10px;align-items:flex-start;margin:18px 0;color:#8f9ab0;font-size:12px;line-height:1.5}
+.cs-consent input{margin-top:3px}
+.cs-primary{
+ width:100%;border:0;border-radius:14px;padding:15px 18px;background:linear-gradient(135deg,#8b7dff,#5b6cff);
+ color:white;font:600 14px "Outfit",sans-serif;cursor:pointer;box-shadow:0 12px 28px rgba(103,92,255,.24);
+}
+.cs-primary:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.cs-small-note{font-size:11px;color:#6f7b92;line-height:1.55;margin-top:13px}
+#surveyGate{display:none;align-items:flex-start;padding-top:7vh}
+.cs-survey-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:22px}
+.cs-progress{font:500 11px "JetBrains Mono",monospace;color:#91a1bf;white-space:nowrap}
+.cs-q{font-size:22px;line-height:1.25;margin:4px 0 18px;font-weight:600}
+.cs-options{display:grid;gap:10px}
+.cs-option{
+ border:1px solid rgba(255,255,255,.1);background:#0a1020;color:#e8ecf6;padding:13px 14px;border-radius:12px;
+ cursor:pointer;text-align:left;font:400 14px "Outfit",sans-serif;transition:.16s;
+}
+.cs-option:hover{border-color:rgba(125,116,255,.55);background:#10162a}
+.cs-option.selected{border-color:#7e78ff;background:linear-gradient(90deg,rgba(126,120,255,.18),rgba(73,211,192,.05))}
+.cs-survey-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px}
+.cs-secondary{border:1px solid rgba(255,255,255,.12);background:transparent;color:#adb7c9;padding:12px 18px;border-radius:12px;cursor:pointer}
+.cs-secondary:disabled{opacity:.35;cursor:not-allowed}
+.cs-topnav-extra{margin-left:6px}
+.wellbeing-modal{
+ position:fixed;inset:0;z-index:19000;background:rgba(3,5,12,.82);backdrop-filter:blur(18px);
+ display:none;align-items:center;justify-content:center;padding:24px;
+}
+.wb-panel{width:min(1060px,100%);max-height:88vh;overflow:auto;background:#0b101d;border:1px solid rgba(255,255,255,.12);border-radius:24px}
+.wb-head{padding:22px 24px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:16px}
+.wb-title{font:600 28px "Outfit";letter-spacing:-.03em}.wb-close{border:0;background:#151c2b;color:#9aa6bb;border-radius:10px;padding:8px 11px;cursor:pointer}
+.wb-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;padding:18px}
+.wb-card{background:#0f1625;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px}
+.wb-card h3{margin:0 0 8px;font-size:14px;font-weight:600}.wb-muted{color:#7f8aa0;font-size:12px;line-height:1.55}
+.wb-chat{display:flex;flex-direction:column;gap:10px;min-height:240px}.wb-msg{padding:11px 13px;border-radius:14px;background:#111b2d;color:#dce3f2;font-size:13px;line-height:1.5}.wb-msg.ai{border-left:3px solid #76a4ff}.wb-msg.user{border-left:3px solid #67d8c5}
+.wb-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}.wb-action{background:#0a1020;color:#dce3f2;border:1px solid rgba(255,255,255,.08);padding:11px;border-radius:11px;cursor:pointer;text-align:left}
+.wb-recs{display:grid;gap:12px}.wb-rec{padding:13px;border-radius:12px;background:#0a1020;border:1px solid rgba(255,255,255,.07)}.wb-rec b{display:block;margin-bottom:4px}.wb-rec span{font-size:12px;color:#8995ab}
+.wb-status{display:inline-flex;padding:6px 9px;border-radius:999px;background:rgba(120,130,255,.12);color:#aeb4ff;font:500 10px "JetBrains Mono";text-transform:uppercase;letter-spacing:.08em}
+@media(max-width:760px){.cs-form-grid,.wb-grid{grid-template-columns:1fr}.cs-gate-card{padding:22px}.wb-panel{max-height:92vh}}
 </style>
 </head>
 <body>
+<!-- PERSONAL PROFILE GATE -->
+<div id="profileGate">
+  <div class="cs-gate-card">
+    <div class="cs-gate-kicker">CognitiveSense AI · Personal Session</div>
+    <h1 class="cs-gate-title">Welcome to your research session.</h1>
+    <div class="cs-gate-sub">Tell us a few basics so the dashboard can address you by name and tailor the optional wellbeing guidance. These details stay in your browser on this device unless you export or submit them yourself.</div>
+    <div class="cs-form-grid">
+      <div class="cs-field">
+        <label for="profileName">Name</label>
+        <input id="profileName" type="text" maxlength="60" placeholder="Your first name" autocomplete="given-name">
+      </div>
+      <div class="cs-field">
+        <label for="profileAge">Age range</label>
+        <select id="profileAge">
+          <option value="">Prefer not to say</option><option>Under 18</option><option>18–24</option><option>25–34</option><option>35–44</option><option>45+</option>
+        </select>
+      </div>
+      <div class="cs-field">
+        <label for="profileRole">Current role</label>
+        <select id="profileRole">
+          <option>Student</option><option>Working professional</option><option>Researcher</option><option>Other</option>
+        </select>
+      </div>
+      <div class="cs-field">
+        <label for="profileGoal">What brings you here?</label>
+        <select id="profileGoal">
+          <option>Understand my focus</option><option>Try the live demo</option><option>Research session</option><option>Explore the wellbeing tools</option>
+        </select>
+      </div>
+    </div>
+    <label class="cs-consent"><input id="profileConsent" type="checkbox"> <span>I understand that this is a research prototype. My profile and check-in answers are stored locally in this browser for personalization. They are not medical or diagnostic measurements.</span></label>
+    <button class="cs-primary" onclick="ONBOARD.saveProfile()">Continue to CognitiveSense AI</button>
+    <div class="cs-small-note">Only the name is required. You can reset or clear the saved profile from the wellbeing panel at any time.</div>
+  </div>
+</div>
+
+<!-- 10-QUESTION CHECK-IN -->
+<div id="surveyGate">
+  <div class="cs-gate-card">
+    <div class="cs-survey-head">
+      <div>
+        <div class="cs-gate-kicker">Personal Check-in</div>
+        <div class="cs-q" id="surveyQuestion">How are you feeling right now?</div>
+      </div>
+      <div class="cs-progress" id="surveyProgress">1 / 10</div>
+    </div>
+    <div class="cs-options" id="surveyOptions"></div>
+    <div class="cs-survey-actions">
+      <button class="cs-secondary" id="surveyBack" onclick="SURVEY.back()" disabled>Back</button>
+      <button class="cs-primary" style="width:auto;min-width:170px" onclick="SURVEY.next()">Next</button>
+    </div>
+    <div class="cs-small-note">This check-in asks about your self-reported current state. It is used for personalization and research context, not diagnosis.</div>
+  </div>
+</div>
+
+<!-- WELLBEING / SUPPORT SPACE -->
+<div class="wellbeing-modal" id="wellbeingModal">
+  <div class="wb-panel">
+    <div class="wb-head">
+      <div>
+        <div class="wb-title">Personal Wellbeing Space</div>
+        <div class="wb-muted" id="wbGreeting">A quiet place for your next step.</div>
+      </div>
+      <button class="wb-close" onclick="WELLBEING.close()">Close</button>
+    </div>
+    <div class="wb-grid">
+      <div>
+        <div class="wb-card">
+          <div class="wb-status" id="wbStatus">READY</div>
+          <h3 style="margin-top:12px">A gentle check-in</h3>
+          <div class="wb-chat" id="wbChat"></div>
+          <div class="wb-actions">
+            <button class="wb-action" onclick="WELLBEING.action('breathing')">2-minute breathing reset</button>
+            <button class="wb-action" onclick="WELLBEING.action('focus')">A short focus reset</button>
+            <button class="wb-action" onclick="WELLBEING.action('movement')">Simple movement break</button>
+            <button class="wb-action" onclick="WELLBEING.action('quiet')">Create a quieter routine</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="wb-card">
+          <h3>Suggestions for you</h3>
+          <div class="wb-muted" id="wbBasedOn">Based on your check-in.</div>
+          <div class="wb-recs" id="wbRecommendations" style="margin-top:12px"></div>
+        </div>
+        <div class="wb-card" style="margin-top:18px">
+          <h3>Your saved profile</h3>
+          <div class="wb-muted" id="wbProfileSummary"></div>
+          <button class="cs-secondary" style="margin-top:12px;width:100%" onclick="SURVEY.retake()">Retake check-in</button>
+          <button class="cs-secondary" style="margin-top:8px;width:100%" onclick="ONBOARD.clearProfile()">Clear saved profile</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- BOOT SCREEN -->
 <div id="boot-screen">
@@ -1176,56 +1187,6 @@ body::after { opacity:.35; }
   </div>
 </div>
 
-
-<!-- PERSONALIZED ONBOARDING / CHECK-IN -->
-<div id="experience-gate" class="open">
-  <div class="gate-shell">
-    <div class="gate-card">
-      <div class="gate-brand">CognitiveSense AI / Personal Session</div>
-      <div class="gate-title">Let’s make this session yours.</div>
-      <div class="gate-copy">Tell the system a little about you first. Your profile and check-in are used to personalize the live dashboard and wellbeing suggestions. This browser stores the profile locally so the system can remember your preferred name.</div>
-      <div class="gate-stepbar"><div class="gate-step active" id="gateStep1"></div><div class="gate-step" id="gateStep2"></div></div>
-
-      <section class="gate-view active" id="gateProfile">
-        <div class="form-grid">
-          <div class="field"><label for="profileName">Preferred name</label><input id="profileName" maxlength="40" placeholder="What should I call you?" autocomplete="name"></div>
-          <div class="field"><label for="profileRole">Current role</label><select id="profileRole"><option>Student</option><option>Working professional</option><option>Researcher</option><option>Other</option></select></div>
-          <div class="field"><label for="profileAge">Age range</label><select id="profileAge"><option>Under 18</option><option>18–24</option><option>25–34</option><option>35–44</option><option>45+</option><option>Prefer not to say</option></select></div>
-          <div class="field"><label for="profileGoal">What brought you here?</label><select id="profileGoal"><option>Improve focus</option><option>Understand my workload</option><option>Relax and reset</option><option>Explore the technology</option><option>Research / study</option></select></div>
-        </div>
-        <div class="gate-actions"><div></div><button class="gate-btn primary" onclick="PROFILE.next()">Continue to check-in</button></div>
-      </section>
-
-      <section class="gate-view" id="gateSurvey">
-        <div class="gate-copy" style="margin:0 0 16px">Use the scale that feels closest right now. There are 10 short questions; there are no right or wrong answers.</div>
-        <div class="checkin-grid" id="surveyQuestions"></div>
-        <div class="gate-actions"><button class="gate-btn" onclick="PROFILE.back()">Back</button><button class="gate-btn primary" onclick="PROFILE.complete()">Finish check-in</button></div>
-      </section>
-    </div>
-  </div>
-</div>
-
-<!-- PERSONALIZED WELLBEING PAGE -->
-<div id="wellbeing-page">
-  <div class="wellbeing-wrap">
-    <div class="wb-top"><div><div class="wb-title">Wellbeing space for <span id="wbName">you</span></div><div class="wb-sub">Personalized, non-clinical ideas based on your check-in and current observable signals.</div></div><button class="gate-btn" onclick="APP.showMain()">Back to live analysis</button></div>
-    <div class="wb-grid">
-      <div class="wb-card">
-        <h3>Personalized suggestions</h3>
-        <div class="survey-summary" id="wbSummary"></div>
-        <div class="recommendations" id="recommendations" style="margin-top:12px"></div>
-        <div class="wb-note">Suggestions are for general wellbeing and focus support. They are not medical advice and are not based on a diagnosis.</div>
-      </div>
-      <div class="wb-card">
-        <h3>Calm conversation</h3>
-        <div class="chat" id="chat"></div>
-        <div class="wb-input"><input id="chatInput" placeholder="Tell me what you need right now..."><button onclick="APP.sendChat()">Send</button></div>
-        <div class="wb-note">The assistant uses your self-reported check-in and live non-clinical signals to choose supportive language. It does not infer or diagnose mental-health conditions.</div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- MAIN SHELL -->
 <div class="shell">
 
@@ -1234,7 +1195,7 @@ body::after { opacity:.35; }
     <div class="brand">
       <div class="brand-mark">CS</div>
       <div>
-        <div class="brand-text"><strong>CognitiveSense</strong> AI</div>
+        <div class="brand-text"><strong>CognitiveSense</strong> AI <span id="nameGreeting" style="font-weight:400;color:#8995ab;font-size:.78em"></span></div>
       </div>
       <span class="brand-version">RESEARCH STUDIO</span>
     </div>
@@ -1261,7 +1222,7 @@ body::after { opacity:.35; }
       <button class="top-btn active" id="btnP" onclick="VISION.toggle('pose')">POSE</button>
       <button class="top-btn" id="btnAudio" onclick="AUDIO.toggle()">AUDIO</button>
       <button class="top-btn active" id="btnNetwork" onclick="VISION.toggle('network')">NEURAL LINES</button>
-      <button class="top-btn" id="btnBackend" onclick="BACKEND.toggle()">BACKEND</button><button class="top-btn" onclick="APP.showWellbeing()">WELLBEING</button><button class="top-btn" onclick="PROFILE.edit()">PROFILE</button>
+      <button class="top-btn" id="btnBackend" onclick="BACKEND.toggle()">BACKEND</button>
     </div>
   </header>
 
@@ -1551,9 +1512,10 @@ body::after { opacity:.35; }
 
     <!-- Bottom actions -->
     <div class="bottom-actions">
-      <button class="act-btn primary" onclick="UI.openReport()">📊 REPORT</button>
-      <button class="act-btn" onclick="DATA.reset()">↺ RESET</button>
-      <button class="act-btn" onclick="DATA.exportJSON()">⬇ EXPORT</button>
+      <button class="act-btn primary" onclick="UI.openReport()">REPORT</button>
+      <button class="act-btn" onclick="WELLBEING.open()">WELLBEING</button>
+      <button class="act-btn" onclick="DATA.reset()">RESET</button>
+      <button class="act-btn" onclick="DATA.exportJSON()">EXPORT</button>
     </div>
   </div>
 </div>
@@ -2854,8 +2816,11 @@ const DATA = {
     const elapsed = SESSION.started ? Math.floor((Date.now()-SESSION.started)/1000) : 0;
     const report = {
       system: 'CognitiveSense AI — Multimodal Intelligence Research Platform',
-      version: '4.0.0',
+      version: '5.0.0',
       generated: new Date().toISOString(),
+      user_profile: ONBOARD.get(),
+      self_reported_checkin: SURVEY.get(),
+      privacy: 'Profile and check-in are stored locally in this browser unless the user explicitly exports this file.',
       session: {
         id: SESSION.id,
         duration_seconds: elapsed,
@@ -2949,6 +2914,169 @@ async function boot() {
 }
 
 boot();
+
+// ─────────────────────────────────────────────
+// PERSONAL PROFILE + CHECK-IN
+// ─────────────────────────────────────────────
+const ONBOARD = {
+  key: 'cognitivesense_user_profile_v1',
+  get(){ try{return JSON.parse(localStorage.getItem(this.key)||'null')}catch(e){return null} },
+  saveProfile(){
+    const name=document.getElementById('profileName').value.trim();
+    const consent=document.getElementById('profileConsent').checked;
+    if(!name){alert('Please enter your name.');return;}
+    if(!consent){alert('Please confirm the research/privacy note before continuing.');return;}
+    const profile={
+      name:name,
+      ageRange:document.getElementById('profileAge').value,
+      role:document.getElementById('profileRole').value,
+      goal:document.getElementById('profileGoal').value,
+      createdAt:new Date().toISOString()
+    };
+    localStorage.setItem(this.key,JSON.stringify(profile));
+    UI.hide?UI.hide():null;
+    document.getElementById('profileGate').style.display='none';
+    document.getElementById('nameGreeting').textContent=` · ${name}`;
+    SURVEY.start();
+  },
+  clearProfile(){
+    if(confirm('Clear your locally saved profile and check-in?')){
+      localStorage.removeItem(this.key);
+      localStorage.removeItem(SURVEY.key);
+      location.reload();
+    }
+  },
+  init(){
+    const p=this.get();
+    if(p){
+      document.getElementById('profileGate').style.display='none';
+      document.getElementById('nameGreeting').textContent=` · ${p.name}`;
+      const survey=SURVEY.get();
+      if(!survey) SURVEY.start();
+    }
+  }
+};
+
+const SURVEY = {
+  key:'cognitivesense_checkin_v1',
+  current:0,
+  answers:[],
+  items:[
+    ['How is your overall mood right now?',['Very low','Low','Okay','Good','Very good']],
+    ['How much energy do you have at the moment?',['Very little','Low','Moderate','Good','High']],
+    ['How much pressure or stress are you experiencing?',['Very low','Low','Moderate','High','Very high']],
+    ['How clear does your thinking feel right now?',['Very unclear','A little unclear','Neutral','Clear','Very clear']],
+    ['How easy is it to stay focused on one task?',['Very difficult','Difficult','Sometimes easy','Mostly easy','Very easy']],
+    ['How rested do you feel?',['Not rested','Slightly rested','Okay','Rested','Very rested']],
+    ['How manageable does your current workload feel?',['Not manageable','Hard to manage','Mixed','Mostly manageable','Very manageable']],
+    ['How connected or supported do you feel right now?',['Very disconnected','A little disconnected','Neutral','Supported','Very supported']],
+    ['What would help you most right now?',['A quiet break','Better focus','Movement','A conversation','Something relaxing']],
+    ['What pace would feel best for the next hour?',['Slow and quiet','Gentle','Normal','Focused','Energetic']]
+  ],
+  get(){try{return JSON.parse(localStorage.getItem(this.key)||'null')}catch(e){return null}},
+  start(){
+    const saved=this.get();
+    if(saved){WELLBEING.build();return;}
+    this.current=0;this.answers=[];document.getElementById('surveyGate').style.display='flex';this.render();
+  },
+  render(){
+    const [q,opts]=this.items[this.current];
+    document.getElementById('surveyQuestion').textContent=q;
+    document.getElementById('surveyProgress').textContent=`${this.current+1} / ${this.items.length}`;
+    const wrap=document.getElementById('surveyOptions');wrap.innerHTML='';
+    opts.forEach((opt,i)=>{
+      const b=document.createElement('button');b.className='cs-option'+(this.answers[this.current]===i?' selected':'');
+      b.textContent=opt;b.onclick=()=>{this.answers[this.current]=i;this.render()};wrap.appendChild(b);
+    });
+    document.getElementById('surveyBack').disabled=this.current===0;
+  },
+  back(){if(this.current>0){this.current--;this.render()}},
+  retake(){
+    this.current=0; this.answers=[]; localStorage.removeItem(this.key);
+    document.getElementById('wellbeingModal').style.display='none';
+    document.getElementById('surveyGate').style.display='flex';
+    this.render();
+  },
+  next(){
+    if(typeof this.answers[this.current]!=='number'){alert('Please choose an option.');return;}
+    if(this.current<this.items.length-1){this.current++;this.render();return;}
+    const obj={answers:[...this.answers],completedAt:new Date().toISOString()};
+    localStorage.setItem(this.key,JSON.stringify(obj));
+    document.getElementById('surveyGate').style.display='none';
+    WELLBEING.build();
+  }
+};
+
+const WELLBEING = {
+  open(){this.build();document.getElementById('wellbeingModal').style.display='flex'},
+  close(){document.getElementById('wellbeingModal').style.display='none'},
+  build(){
+    const p=ONBOARD.get(); const s=SURVEY.get();
+    if(!p)return;
+    document.getElementById('wbGreeting').textContent=`${p.name}, here is a private space for small, practical resets based on your check-in.`;
+    document.getElementById('wbProfileSummary').textContent=`Name: ${p.name} · ${p.role} · Goal: ${p.goal}${p.ageRange?' · '+p.ageRange:''}`;
+    const a=s?s.answers:[]; const stress=a[2]??2, energy=a[1]??2, clarity=a[3]??2, focus=a[4]??2, rest=a[5]??2, load=a[6]??2;
+    let mode='balanced';
+    if(stress>=3 && energy<=2) mode='recovery';
+    else if(stress>=3) mode='calm';
+    else if(focus<=2 || clarity<=2) mode='focus';
+    else if(energy>=3 && focus>=3) mode='momentum';
+    const status={recovery:'RECOVERY MODE',calm:'CALM MODE',focus:'FOCUS MODE',momentum:'MOMENTUM MODE',balanced:'BALANCED MODE'}[mode];
+    document.getElementById('wbStatus').textContent=status;
+    const messages={
+      recovery:`You seem to be carrying a fair amount of pressure with lower energy. Keep the next step small: pause, breathe, hydrate, and choose one manageable task.`,
+      calm:`Your check-in suggests that reducing stimulation may help. A quieter environment and a short reset could make the next block of time easier.`,
+      focus:`You may benefit from reducing task-switching. Try one 15–25 minute task, one browser tab, and a short break afterward.`,
+      momentum:`You have useful energy and focus right now. A short planned work block followed by a real break can help you use it without overextending.`,
+      balanced:`Your answers look fairly balanced. A simple routine of focused work, movement, and short breaks may fit well right now.`
+    };
+    const chat=document.getElementById('wbChat'); chat.innerHTML='';
+    const add=(t,c='ai')=>{const d=document.createElement('div');d.className='wb-msg '+c;d.textContent=t;chat.appendChild(d)};
+    add(messages[mode]);
+    add('The suggestions below are wellness ideas, not a diagnosis or treatment plan.');
+    const recs=this.recommendations(mode, load, rest);
+    const box=document.getElementById('wbRecommendations');box.innerHTML='';
+    document.getElementById('wbBasedOn').textContent=`Personalized from your self-reported check-in (${mode} mode).`;
+    recs.forEach(r=>{const d=document.createElement('div');d.className='wb-rec';d.innerHTML=`<b>${r.title}</b><span>${r.note}</span>`;box.appendChild(d)});
+  },
+  recommendations(mode){
+    const base=[
+      {title:'Book: The Comfort Book — Matt Haig',note:'Short reflective entries that are easy to read in small pieces.'},
+      {title:'Book: Atomic Habits — James Clear',note:'Practical ideas for building small, repeatable routines.'},
+      {title:'Book: Deep Work — Cal Newport',note:'Useful when you want a structured approach to focused work.'},
+    ];
+    const recs=mode==='focus'?[base[2],{title:'Music: instrumental / ambient focus playlist',note:'Choose low-distraction background audio without lyrics.'},base[1]]:
+      mode==='recovery'?[base[0],{title:'Music: slow instrumental or nature sounds',note:'Keep the volume low and use it as a background cue for a short reset.'},{title:'Activity: 5-minute walk',note:'A brief change of environment can provide a simple reset.'}]:
+      mode==='calm'?[base[0],{title:'Music: gentle piano or acoustic instrumental',note:'A low-stimulation playlist can create a quieter setting.'},{title:'Activity: 2-minute breathing reset',note:'Slow the exhale and keep the exercise comfortable.'}]:
+      [base[1],base[2],{title:'Music: light instrumental / lo-fi',note:'Useful for a steady background during a planned work block.'}];
+    return recs;
+  },
+  action(kind){
+    const p=ONBOARD.get(); const name=p?p.name:'there'; const chat=document.getElementById('wbChat');
+    const add=(t,c='user')=>{const d=document.createElement('div');d.className='wb-msg '+c;d.textContent=t;chat.appendChild(d)};
+    const replies={
+      breathing:`${name}, try this for two minutes: inhale gently for about 4 seconds, then exhale slowly for about 6 seconds. Repeat at a comfortable pace.`,
+      focus:`For the next 15 minutes, pick one small task and remove one source of distraction. When the timer ends, step away for a real break.`,
+      movement:`Stand up, roll your shoulders, unclench your hands, and take a short walk or stretch for a few minutes.`,
+      quiet:`Lower notifications, reduce the number of open tasks, and make one simple plan for the next hour. You do not need to solve everything at once.`
+    };
+    add(kind==='breathing'?'I need a breathing reset.':kind==='focus'?'I need a focus reset.':kind==='movement'?'I need a movement break.':'I want a quieter routine.');
+    const d=document.createElement('div');d.className='wb-msg ai';d.textContent=replies[kind];chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
+  }
+};
+
+function CS_addWellbeingShortcut(){
+  const btn=document.createElement('button');
+  btn.className='top-btn cs-topnav-extra';btn.textContent='WELLBEING';btn.onclick=()=>WELLBEING.open();
+  const target=document.querySelector('.topbar-right'); if(target) target.insertBefore(btn,target.firstChild);
+}
+
+// initialize after existing app boot
+setTimeout(()=>{
+  ONBOARD.init();
+  CS_addWellbeingShortcut();
+}, 300);
+
 </script>
 </body>
 </html>
