@@ -1,4 +1,4 @@
-# CognitiveSense AI v4
+# CognitiveSense AI
 
 **Multimodal Behavioral Signals for Generalizable Cognitive Load Estimation**
 
@@ -28,7 +28,7 @@ Requirements: Python 3.11 recommended.
 ### Windows
 
 ```bat
-cd cognitive_load_ai\live_cbas
+cd live_cbas
 START.bat
 ```
 
@@ -37,7 +37,6 @@ Then open `http://localhost:8000`.
 ### macOS/Linux
 
 ```bash
-cd cognitive_load_ai
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
